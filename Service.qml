@@ -41,6 +41,13 @@ Scope {
     return I18n.t(lang, key, params)
   }
 
+  // 提示气泡统一入口：先清掉上一句说话的滞留，再发 speak，否则 speech 的优先级会把提示盖住
+  function sayInfo(text) {
+    speech = null
+    speechMeme = ""
+    speak("", text, "", "info")
+  }
+
   readonly property var murmur: config.murmur || ({})
   readonly property var petCfg: ({
     id: "main",
@@ -101,7 +108,7 @@ Scope {
     if (lang === "en" && !("workStatusTexts" in user)) merged.workStatusTexts = I18n.WORK_STATUS_TEXTS_EN
     config = merged
     ready = true
-    if (configError) speak("", tr("configError", { error: configError }), "", "info")
+    if (configError) sayInfo(tr("configError", { error: configError }))
   }
 
   FileView {
@@ -326,11 +333,11 @@ Scope {
 
   function requestMurmur(manual) {
     if (!murmurReady()) {
-      if (manual) speak("", tr("errNoModel"), "", "info")
+      if (manual) sayInfo(tr("errNoModel"))
       return "no-model"
     }
     if (pi.busy) {
-      if (manual) speak("", tr("busy"), "", "info")
+      if (manual) sayInfo(tr("busy"))
       return "busy"
     }
     // 你正在干活时不打扰（只有手动点才允许插一句）
@@ -350,11 +357,11 @@ Scope {
   /** 对话：和碎碎念同一条会话、同一套隔离，只是提示词和停留时长不同。 */
   function requestChat(text) {
     if (!murmurReady()) {
-      speak("", tr("errNoModel"), "", "info")
+      sayInfo(tr("errNoModel"))
       return "no-model"
     }
     if (pi.busy) {
-      speak("", tr("busy"), "", "info")
+      sayInfo(tr("busy"))
       return "busy"
     }
     speechMeme = ""
@@ -362,7 +369,7 @@ Scope {
     var sep = lang === "en" ? " " : ""
     var prompt = tr("chatPrompt", { text: text }) + sep + tr("chatStyle")
     if (!pi.run(prompt, "chat")) {
-      speak("", tr("busy"), "", "info")
+      sayInfo(tr("busy"))
       return "busy"
     }
     return "ok"
@@ -380,11 +387,11 @@ Scope {
   function showContext() {
     var ws = workStatus
     if (!ws || !(ws.ctxPercent >= 0)) {
-      speak("", tr("ctxUnknown"), "", "info")
+      sayInfo(tr("ctxUnknown"))
       return
     }
     var pct = Math.round(ws.ctxPercent * 100)
-    speak("", tr("ctxUsage", { pct: pct }), "", "info")
+    sayInfo(tr("ctxUsage", { pct: pct }))
     var pool = (config.animations || {}).events || {}
     var slot = (pool.context || [])[PS.ctxTier(ws.ctxPercent)]
     if (slot !== undefined) playRequest("", pickPoolSlot(slot))
@@ -408,9 +415,7 @@ Scope {
     }
 
     function say(text: string): string {
-      root.speech = null
-      root.speechMeme = ""
-      root.speak("", text, "", "info")
+      root.sayInfo(text)
       return "ok"
     }
     function play(name: string): string {
