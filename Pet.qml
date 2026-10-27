@@ -617,6 +617,17 @@ Item {
       pet.playByName(name)
     }
 
+    function onSleepRequest(sleeping) {
+      var events = pet.anims.events || {}
+      if (sleeping) {
+        var spool = events.sleep || []
+        if (spool.length && !pet.dragging) pet.play(spool[0], false)
+      } else {
+        var wpool = events.wake || []
+        if (wpool.length && !pet.dragging) pet.play(wpool[Math.floor(Math.random() * wpool.length)], true)
+      }
+    }
+
   }
 
   // 当前展示的会话 + 档位；只有它变化才切动画，工具 / 命令 / 总结变化只刷新气泡

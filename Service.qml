@@ -153,6 +153,8 @@ Scope {
   // petId 为空 = 所有宠物
   signal speak(string petId, string text, string meme, string kind)
   signal playRequest(string petId, string name)
+  // 整理记忆时的"睡觉"状态：true 睡下（循环动画），false 醒来
+  signal sleepRequest(bool sleeping)
 
   // ------------------------------------------------------------ 工作状态
   property var wsStore: PS.createStore()
@@ -269,6 +271,8 @@ Scope {
   readonly property bool piBusy: pi.busy
   property string speechMeme: ""
 
+  property bool sleeping: false
+
   // ------------------------------------------------------------ 整理记忆（compact 持久会话）
   Process {
     id: compactProc
@@ -282,7 +286,7 @@ Scope {
       sayInfo(tr("errNoModel"))
       return "no-model"
     }
-    if (pi.busy || compactProc.running) {
+    if (pi.busy || compactProc.running || sleeping) {
       sayInfo(tr("busy"))
       return "busy"
     }
@@ -299,11 +303,16 @@ Scope {
     if (String(root.murmur.provider || "")) cmd = cmd.concat(["--provider", String(root.murmur.provider)])
     compactProc.command = cmd
     compactProc.running = true
+    sleeping = true
+    sleepRequest(true)
     sayInfo(tr("compactRunning"))
     return "ok"
   }
 
   function onCompactFinished(exitCode) {
+    // 醒来：先播醒来动画，再报结果
+    sleeping = false
+    sleepRequest(false)
     // compact 后旧的占用不再准确：清掉，等下次说话时子进程重新上报
     petCtx = null
     var text = String(compactOut.text || "").trim()
@@ -409,6 +418,10 @@ Scope {
   }
 
   function requestMurmur(manual) {
+    if (sleeping) {
+      if (manual) sayInfo(tr("sleeping"))
+      return "sleeping"
+    }
     if (!murmurReady()) {
       if (manual) sayInfo(tr("errNoModel"))
       return "no-model"
@@ -433,6 +446,10 @@ Scope {
 
   /** 对话：和碎碎念同一条会话、同一套隔离，只是提示词和停留时长不同。 */
   function requestChat(text) {
+    if (sleeping) {
+      sayInfo(tr("sleeping"))
+      return "sleeping"
+    }
     if (!murmurReady()) {
       sayInfo(tr("errNoModel"))
       return "no-model"
