@@ -31,7 +31,6 @@ No `jq`, `socat`, `python`, or rate-limit collector is involved.
 
 ```bash
 omarchy plugin add <this-repo-url> --enable
-~/.config/omarchy/plugins/local.pi-pet/chmod.sh              # restore executable bits when the mount strips them
 ~/.config/omarchy/plugins/local.pi-pet/bin/agent-pet-install  # link the host-side extension; restart pi afterwards
 ```
 

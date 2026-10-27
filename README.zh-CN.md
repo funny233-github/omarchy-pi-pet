@@ -28,7 +28,6 @@ Omarchy 桌面宠物，只盯着 **pi**，并且用它自己的声音跟你说�
 
 ```bash
 omarchy plugin add <这个仓库的地址> --enable
-~/.config/omarchy/plugins/local.pi-pet/chmod.sh              # 挂载吞掉可执行位时用这个补回来
 ~/.config/omarchy/plugins/local.pi-pet/bin/agent-pet-install  # 装宿主侧扩展的符号链接，之后重启 pi
 ```
 
