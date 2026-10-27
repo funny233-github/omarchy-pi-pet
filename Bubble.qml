@@ -38,7 +38,9 @@ Item {
     return ""
   }
 
-  readonly property bool active: bodyText !== ""
+  // active 取决于 content：content 清空（气泡该消失）时淡出；
+  // shownContent 只在淡出期间保留最后文字，不能用来判断显隐，否则气泡永不消失
+  readonly property bool active: content !== null && content !== undefined
   opacity: active ? 1 : 0
   visible: opacity > 0
   Behavior on opacity {

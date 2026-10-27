@@ -16,6 +16,8 @@ Scope {
   property string omarchyPath: ""
   property var manifest: null
 
+  // 部署验证用：改一次代码就递增，state 里能看到运行的是不是新代码
+  readonly property string build: "v1.2-sayinfo"
   readonly property string home: Quickshell.env("HOME")
   readonly property string pluginDir: decodeURIComponent(String(Qt.resolvedUrl(".")).replace(/^file:\/\//, "").replace(/\/$/, ""))
   // 目录一律走 XDG：用户把 XDG_CONFIG_HOME / XDG_STATE_HOME 指到别处时也要跟着走
@@ -451,6 +453,7 @@ Scope {
     function state(): string {
       var ws = root.workStatus
       return JSON.stringify({
+        build: root.build,
         ready: root.ready,
         hidden: root.hidden,
         configError: root.configError,
