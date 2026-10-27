@@ -73,8 +73,8 @@
     // 给宠物自己的 pi 装什么（严格隔离，见 README）
     "tools": ["pet_state"],          // 工具白名单；[] = 一个工具都不给
     "extensions": [],                // 额外扩展路径；相对路径按 ~/.config/agent-pet/ 解析
-    // 想让她联网查资料就先跑 bin/agent-pet-web-access，然后改成：
-    //   "extensions": ["ext/pi-web-access/node_modules/pi-web-access/dist/index.js"],
+    // 想让她联网查资料就改成：
+    //   "extensions": ["npm:pi-web-access"],
     //   "tools": ["pet_state", "web_search", "fetch_content"]
   },
 

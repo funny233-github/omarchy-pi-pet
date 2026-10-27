@@ -81,22 +81,17 @@ cp examples/config.jsonc ~/.config/agent-pet/config.jsonc
 
 ### 可选：让她能上网查资料
 
-装上 [pi-web-access](https://www.npmjs.com/package/pi-web-access) 就可以（装在她自己的扩展目录里，
-不碰你的 `~/.pi/agent/extensions/`）：
-
-```bash
-bin/agent-pet-web-access      # npm 装到 ~/.config/agent-pet/ext/ 下，并打印要加的配置
-```
-
-然后在配置的 `murmur` 里加：
+在配置里把 [pi-web-access](https://www.npmjs.com/package/pi-web-access) 当包源加进去就行——pi 会把它装进自己的
+包目录（`~/.pi/agent/tmp/extensions/…`），不碰你的 `~/.pi/agent/extensions/`：
 
 ```jsonc
-"extensions": ["ext/pi-web-access/node_modules/pi-web-access/dist/index.js"],
+"extensions": ["npm:pi-web-access"],                                  // git: 和 https:// 源同样支持
 "tools": ["pet_state", "web_search", "fetch_content"]
 ```
 
 `tools` 是白名单：没列出来的工具模型调不到。零配置走 Exa MCP 不需要 key；想指定服务商就把 key 写进
-`~/.pi/agent/web-search.json`。不想要了跑 `bin/agent-pet-web-access --uninstall`。
+`~/.pi/agent/web-search.json`。首次会下载安装包（需要网络、要等一会儿），之后复用同一份。
+（配置了包源时 wrapper 会关掉 `PI_OFFLINE`，因为 pi 在离线模式下会静默跳过缺失包的安装。）
 
 `model` 为空时不会启动任何进程，也不会退回 pi 的默认模型——写错名字的代价最多是"她不说话"，而不是默默花掉你的额度。
 

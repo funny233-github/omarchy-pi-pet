@@ -67,11 +67,21 @@ else
   common+=(--no-session)
 fi
 common+=(--no-extensions -e "$plugin/ext/pet.ts")
+remote_ext=0
 for path in ${exts+"${exts[@]}"}; do
   [[ -n $path ]] || continue
-  [[ $path == /* ]] || path="$config_home/agent-pet/$path"
-  [[ -e $path ]] || die 78 "extension not found: $path"
-  common+=(-e "$path")
+  case $path in
+    npm:*|git:*|http://*|https://*)
+      # pi 的包源：由 pi 自己装进 ~/.pi/agent/tmp/extensions/，脚本不校验也不复制
+      common+=(-e "$path")
+      remote_ext=1
+      ;;
+    *)
+      [[ $path == /* ]] || path="$config_home/agent-pet/$path"
+      [[ -e $path ]] || die 78 "extension not found: $path"
+      common+=(-e "$path")
+      ;;
+  esac
 done
 if [[ -n $tools ]]; then
   common+=(--tools "$tools")
@@ -81,14 +91,22 @@ fi
 common+=(--no-mcp --no-skills --no-prompt-templates --no-context-files --no-approve)
 
 # 剥掉会改变 pi 行为的继承变量（用户可能全局设了），再打上宠物自己的标记。
+# 离线模式只在没有包源时开启。pi 的 package-manager 在离线模式下直接跳过缺失包的安装
+# （package-manager.js:1014 `if (isOfflineModeEnabled()) return false`），
+# 会让 `-e npm:...` 静默失效，所以装了包源就关掉它。
+offline=1
+[[ $remote_ext == 1 ]] && offline=0
+
 clean_env() {
   # exec 放在函数体内：bash 的 `exec 函数名` 会把它当外部命令报 not found
-  exec env \
-    -u PI_CODING_AGENT_DIR -u PI_CODING_AGENT_SESSION_DIR -u PI_PACKAGE_DIR \
-    -u PI_CODING_AGENT -u PI_SESSION_ID -u PI_SESSION_FILE -u PI_PROVIDER \
-    -u PI_MODEL -u PI_REASONING_LEVEL \
-    AGENT_PET_INTERNAL=1 PI_TELEMETRY=0 PI_SKIP_VERSION_CHECK=1 PI_OFFLINE=1 \
-    "$@"
+  local -a env_args=(
+    -u PI_CODING_AGENT_DIR -u PI_CODING_AGENT_SESSION_DIR -u PI_PACKAGE_DIR
+    -u PI_CODING_AGENT -u PI_SESSION_ID -u PI_SESSION_FILE -u PI_PROVIDER
+    -u PI_MODEL -u PI_REASONING_LEVEL
+    AGENT_PET_INTERNAL=1 PI_TELEMETRY=0 PI_SKIP_VERSION_CHECK=1
+  )
+  [[ $offline == 1 ]] && env_args+=(PI_OFFLINE=1)
+  exec env "${env_args[@]}" "$@"
 }
 
 # ---------------------------------------------------------------- compact

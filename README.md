@@ -86,22 +86,19 @@ cp examples/config.jsonc ~/.config/agent-pet/config.jsonc
 
 ### Optional: web access for the pet
 
-She can look things up with [pi-web-access](https://www.npmjs.com/package/pi-web-access) if you install it into her own
-extension directory (your `~/.pi/agent/extensions/` is never touched):
-
-```bash
-bin/agent-pet-web-access      # npm-installs it under ~/.config/agent-pet/ext/ and prints the config lines
-```
-
-Then add to `murmur` in your config:
+She can look things up with [pi-web-access](https://www.npmjs.com/package/pi-web-access). Add it as a package source in
+your config — pi installs it into its own package directory (`~/.pi/agent/tmp/extensions/…`), not into your
+`~/.pi/agent/extensions/`:
 
 ```jsonc
-"extensions": ["ext/pi-web-access/node_modules/pi-web-access/dist/index.js"],
+"extensions": ["npm:pi-web-access"],                                  // git: and https:// sources work too
 "tools": ["pet_state", "web_search", "fetch_content"]
 ```
 
 `tools` is an allowlist: a tool you do not list cannot be called. Zero-config search works through Exa MCP; put provider
-keys in `~/.pi/agent/web-search.json` to choose your own. Remove it again with `bin/agent-pet-web-access --uninstall`.
+keys in `~/.pi/agent/web-search.json` to choose your own. The first run downloads the package, so it takes a while and
+needs network; after that it is reused. (The wrapper turns `PI_OFFLINE` off whenever a package source is configured,
+because pi silently skips installing missing packages while offline.)
 
 With an empty `model` nothing is ever spawned. There is no fallback to pi's default model, so a typo cannot quietly spend
 your credits on something expensive.
