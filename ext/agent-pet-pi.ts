@@ -1,5 +1,10 @@
 /**
- * agent-pet 状态上报扩展（宿主侧，装在 ~/.pi/agent/extensions/）。
+ * agent-pet 状态上报扩展（宿主侧）。
+ *
+ * 不装进 ~/.pi/agent/extensions/：那样每个 pi 会话都会加载，包括你干活的那些。
+ * 用显式导入，只有你带上它的会话才会上报：
+ *     pi -e <插件目录>/ext/agent-pet-pi.ts
+ * 想长期用就做成别名（pi-pet），普通 `pi` 完全不加载这段代码。
  *
  * 只做一件事：把 pi 的生命周期事件压成一行 JSON，写进宠物监听的 unix socket。
  * 单向 —— 从不读回包（宠物进程不在时静默丢弃）。

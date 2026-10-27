@@ -28,10 +28,21 @@ Omarchy 桌面宠物，只盯着 **pi**，并且用它自己的声音跟你说�
 
 ```bash
 omarchy plugin add <这个仓库的地址> --enable
-~/.config/omarchy/plugins/local.pi-pet/bin/agent-pet-install  # 装宿主侧扩展的符号链接，之后重启 pi
 ```
 
-`bin/agent-pet-install --uninstall` 只删除它自己创建的那条链接，并且尊重 `PI_CODING_AGENT_DIR`。
+装到这里就完了。**不会**往 `~/.pi/agent/extensions/` 写任何东西——pi 会把那个目录里的东西加载进**每一个**会话，
+包括你干活的那些。上报扩展改成显式导入：
+
+```bash
+# 先试一次
+pi -e ~/.config/omarchy/plugins/local.pi-pet/ext/agent-pet-pi.ts
+
+# 或者长期用：`pi-pet` 才上报，普通的 `pi` 完全不加载它
+alias pi-pet='pi -e ~/.config/omarchy/plugins/local.pi-pet/ext/agent-pet-pi.ts'
+```
+
+加完别名要重开 pi（pi 不支持热加载扩展）。如果之前按老办法在 `~/.pi/agent/extensions/agent-pet-pi.ts` 建过链接，
+删掉它，已经不用了。
 
 ## 配置
 
@@ -73,8 +84,8 @@ omarchy plugin add <这个仓库的地址> --enable
 ## 两个 pi 进程的关系
 
 ```
-你的 pi（TUI）
-  └─ ext/agent-pet-pi.ts        装在 ~/.pi/agent/extensions，只写不读
+你的 pi（TUI），带 `-e` 启动
+  └─ ext/agent-pet-pi.ts        只在你要的会话里加载，只写不读
         │  unix socket  $XDG_RUNTIME_DIR/agent-pet/events.sock
         ▼
     omarchy-shell（本插件的 Service.qml）
@@ -83,8 +94,8 @@ omarchy plugin add <这个仓库的地址> --enable
         └─ ext/pet.ts            它注册的唯一工具：pet_state
 ```
 
-两套扩展永远不会互相加载：宿主那个靠目录自动发现（子进程用 `--no-extensions` 关掉），宠物那个靠显式 `-e`
-（你的 TUI 不会去加载它，它也不在 agent 目录里）。
+两套扩展永远不会互相加载：宿主那个由你在启动时 `-e` 指定，子进程用 `--no-extensions` 关掉；宠物那个由插件目录
+里的路径显式 `-e` 加载，它从不出现在你的 agent 目录里。
 
 ## 宠物自己的 pi 是隔离的
 
@@ -121,7 +132,7 @@ omarchy-shell agent-pet forget    # 清空她的持久会话
 | `Service.qml` | 配置、会话状态、说话、通知、IPC |
 | `Pi.qml` | 启动子 pi、解析事件流、驱动相位机 |
 | `EventServer.qml` | 两个生产者共用的 unix socket |
-| `ext/agent-pet-pi.ts` | 宿主侧上报扩展，装进 pi 的扩展目录 |
+| `ext/agent-pet-pi.ts` | 宿主侧上报扩展，用 `pi -e` 显式导入 |
 | `ext/pet.ts` | 子进程侧的 `pet_state` 工具 |
 | `bin/agent-pet-pi` | 唯一启动点，隔离 flag 都在这里 |
 | `~/.local/state/agent-pet/pi-sessions/` | 她的持久会话（`agent-pet forget` 清空） |

@@ -31,10 +31,21 @@ No `jq`, `socat`, `python`, or rate-limit collector is involved.
 
 ```bash
 omarchy plugin add <this-repo-url> --enable
-~/.config/omarchy/plugins/local.pi-pet/bin/agent-pet-install  # link the host-side extension; restart pi afterwards
 ```
 
-`bin/agent-pet-install --uninstall` removes only the symlink it created. It respects `PI_CODING_AGENT_DIR`.
+That is the whole installation. Nothing is written into `~/.pi/agent/extensions/`, because pi loads everything in that
+directory into **every** session — including the ones you work in. The reporter is imported explicitly instead:
+
+```bash
+# try it once
+pi -e ~/.config/omarchy/plugins/local.pi-pet/ext/agent-pet-pi.ts
+
+# or make it permanent: `pi-pet` reports to the pet, a plain `pi` never loads it
+alias pi-pet='pi -e ~/.config/omarchy/plugins/local.pi-pet/ext/agent-pet-pi.ts'
+```
+
+Restart pi after adding the alias (`pi` cannot hot-load extensions). If you installed an earlier build into
+`~/.pi/agent/extensions/agent-pet-pi.ts`, delete that symlink; it is no longer used.
 
 ## Configuration
 
@@ -79,8 +90,8 @@ your credits on something expensive.
 ## How the two pi processes relate
 
 ```
-your pi (TUI)
-  └─ ext/agent-pet-pi.ts        installed in ~/.pi/agent/extensions, write-only
+your pi (TUI), started with `-e`
+  └─ ext/agent-pet-pi.ts        loaded only in sessions that ask for it, write-only
         │  unix socket  $XDG_RUNTIME_DIR/agent-pet/events.sock
         ▼
     omarchy-shell  (Service.qml in this plugin)
@@ -89,8 +100,9 @@ your pi (TUI)
         └─ ext/pet.ts            the only tool it registers: pet_state
 ```
 
-The two extension sets never see each other. The host one is auto-discovered by your TUI and disabled in the child with
-`--no-extensions`; the child one is loaded by explicit `-e` and is never installed into your agent directory.
+The two extension sets never see each other. The host one is loaded by `-e` in the sessions you choose and disabled in
+the child with `--no-extensions`; the child one is loaded by explicit `-e` from the plugin directory and never lives in
+your agent directory.
 
 ## The pet's own pi is sandboxed
 
@@ -127,7 +139,7 @@ omarchy-shell agent-pet forget    # clear her persistent session
 | `Service.qml` | Config, session state, speech, notifications, IPC |
 | `Pi.qml` | Spawns the child pi, parses the event stream, drives the phase machine |
 | `EventServer.qml` | Unix socket shared by both producers |
-| `ext/agent-pet-pi.ts` | Host-side reporter, installed into pi's extension directory |
+| `ext/agent-pet-pi.ts` | Host-side reporter, imported with `pi -e` |
 | `ext/pet.ts` | Child-side `pet_state` tool |
 | `bin/agent-pet-pi` | The single spawn point; isolation flags live here |
 | `~/.local/state/agent-pet/pi-sessions/` | Her persistent session (`agent-pet forget` clears it) |
