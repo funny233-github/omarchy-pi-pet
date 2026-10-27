@@ -1,0 +1,77 @@
+#!/usr/bin/env bash
+# agent-pet-pi —— 宠物唯一允许 spawn 子 pi 的地方。
+#
+# 这里把"严格定制"写死：不加载宿主任何扩展/技能/提示模板/上下文文件/MCP，不信任项目 .pi，
+# 工具面由 AGENT_PET_TOOLS 全量替换（空 = 零工具），扩展面只有 -e 列出来的那些。
+# 任何绕过这个脚本去调 pi 的代码路径，都算泄漏。
+#
+# 入参全部走环境变量（提示词走 stdin，绝不进进程参数）：
+#   AGENT_PET_PLUGIN      插件目录（persona 与 ext/pet.ts 都在里面）
+#   AGENT_PET_STATE       ~/.local/state/agent-pet
+#   AGENT_PET_MODEL       必填，空则拒绝启动（绝不用默认模型偷偷跑）
+#   AGENT_PET_PROVIDER    可选，同名模型消歧
+#   AGENT_PET_THINKING    off|minimal|low|medium|high|xhigh|max，默认 low
+#   AGENT_PET_SESSION     会话 ID，空 = --no-session（无状态）
+#   AGENT_PET_TOOLS       逗号分隔的工具白名单，空 = -nt（零工具）
+#   AGENT_PET_EXTENSIONS  额外扩展路径，一行一个
+#   AGENT_PET_LANG        zh|en，选 persona 文件
+#   AGENT_PET_STREAM      0 = --mode text（一次性输出），否则 --mode json（流式）
+#
+# 注意：这个文件在 sandboxfs 挂载上无法置可执行位，调用方一律用 `bash <path>`。
+
+set -uo pipefail
+
+die() { printf '%s\n' "$2" >&2; exit "$1"; }
+
+[[ -n ${AGENT_PET_MODEL:-} ]] || die 2 "agent-pet-pi: AGENT_PET_MODEL is empty; refusing to fall back to pi's default model"
+[[ -n ${AGENT_PET_PLUGIN:-} ]] || die 2 "agent-pet-pi: AGENT_PET_PLUGIN is empty"
+[[ -n ${AGENT_PET_STATE:-} ]] || die 2 "agent-pet-pi: AGENT_PET_STATE is empty"
+command -v pi >/dev/null || die 127 "agent-pet-pi: pi not found on PATH"
+
+persona="$AGENT_PET_PLUGIN/assets/persona.${AGENT_PET_LANG:-zh}.md"
+[[ -f $persona ]] || persona="$AGENT_PET_PLUGIN/assets/persona.zh.md"
+[[ -f $persona ]] || die 2 "agent-pet-pi: persona prompt missing"
+
+mode=json
+[[ ${AGENT_PET_STREAM:-1} == 0 ]] && mode=text
+
+cmd=(pi --print --mode "$mode" --system-prompt "$persona" --model "$AGENT_PET_MODEL")
+[[ -n ${AGENT_PET_PROVIDER:-} ]] && cmd+=(--provider "$AGENT_PET_PROVIDER")
+cmd+=(--thinking "${AGENT_PET_THINKING:-low}")
+
+if [[ -n ${AGENT_PET_SESSION:-} ]]; then
+  cmd+=(--session-id "$AGENT_PET_SESSION" --session-dir "$AGENT_PET_STATE/pi-sessions")
+else
+  cmd+=(--no-session)
+fi
+
+# 扩展面：宠物自己的 pet_state 扩展，加上配置里列出的额外路径
+cmd+=(--no-extensions -e "$AGENT_PET_PLUGIN/ext/pet.ts")
+if [[ -n ${AGENT_PET_EXTENSIONS:-} ]]; then
+  while IFS= read -r path; do
+    [[ -n $path ]] && cmd+=(-e "$path")
+  done <<<"$AGENT_PET_EXTENSIONS"
+fi
+
+# 工具面：非空 = 全量替换成白名单；空 = 全部关掉
+if [[ -n ${AGENT_PET_TOOLS:-} ]]; then
+  cmd+=(--tools "$AGENT_PET_TOOLS")
+else
+  cmd+=(-nt)
+fi
+
+cmd+=(--no-mcp --no-skills --no-prompt-templates --no-context-files --no-approve)
+
+mkdir -p "$AGENT_PET_STATE/pi-cwd" "$AGENT_PET_STATE/pi-sessions" || die 1 "agent-pet-pi: cannot create state dirs"
+cd "$AGENT_PET_STATE/pi-cwd" || die 1 "agent-pet-pi: cannot enter work dir"
+
+# 剥掉会改变 pi 行为的继承变量（用户可能全局设了），再打上宠物自己的标记。
+exec env \
+  -u PI_CODING_AGENT_DIR -u PI_CODING_AGENT_SESSION_DIR -u PI_PACKAGE_DIR \
+  -u PI_CODING_AGENT -u PI_SESSION_ID -u PI_SESSION_FILE -u PI_PROVIDER \
+  -u PI_MODEL -u PI_REASONING_LEVEL \
+  AGENT_PET_INTERNAL=1 \
+  PI_TELEMETRY=0 \
+  PI_SKIP_VERSION_CHECK=1 \
+  PI_OFFLINE=1 \
+  "${cmd[@]}"

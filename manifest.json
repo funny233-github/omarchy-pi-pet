@@ -1,0 +1,13 @@
+{
+  "schemaVersion": 1,
+  "id": "local.pi-pet",
+  "name": "Pi Pet",
+  "version": "0.1.0",
+  "author": "lia",
+  "license": "MIT",
+  "description": "Desktop pet ported from dsh-pet, with a strictly sandboxed pi integration: live work status, and murmurs spoken by your own pi with an isolated, tool-limited configuration.",
+  "kinds": ["service"],
+  "entryPoints": {
+    "service": "Service.qml"
+  }
+}
