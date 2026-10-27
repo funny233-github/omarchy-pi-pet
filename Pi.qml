@@ -47,10 +47,10 @@ Scope {
   signal finished(bool ok, string code, string detail)
 
   property int shown: 0
-  property string _errorLine: ""
-  property bool _stopReasonError: false
-  property bool _selfKilled: false
-  property string _timeout: ""
+  property string errorLine: ""
+  property bool stopReasonError: false
+  property bool selfKilled: false
+  property string timeoutKind: ""
 
   // ------------------------------------------------------------ 入口
   function run(prompt, kind) {
@@ -72,7 +72,7 @@ Scope {
   /** 用户主动打断（隐藏宠物、切走、再来一次）：不算错误 */
   function cancel() {
     if (!proc.running) return
-    _selfKilled = true
+    selfKilled = true
     proc.signal(15)
   }
 
@@ -101,10 +101,10 @@ Scope {
     notice = ""
     shown = 0
     streaming = false
-    _errorLine = ""
-    _stopReasonError = false
-    _selfKilled = false
-    _timeout = ""
+    errorLine = ""
+    stopReasonError = false
+    selfKilled = false
+    timeoutKind = ""
   }
 
   // ------------------------------------------------------------ 逐行解析
@@ -151,7 +151,7 @@ Scope {
         notice = "（" + String(d.toolName || "tool") + "）"
         tick()
       } else if (d.type === "error") {
-        _errorLine = String(d.error || d.reason || "").slice(0, 200)
+        errorLine = String(d.error || d.reason || "").slice(0, 200)
       }
       return
     }
@@ -159,8 +159,8 @@ Scope {
     if (ev.type === "message_end") {
       var message = ev.message || {}
       if (message.role !== "assistant") return
-      if (message.stopReason === "error") _stopReasonError = true
-      if (message.errorMessage) _errorLine = String(message.errorMessage).slice(0, 200)
+      if (message.stopReason === "error") stopReasonError = true
+      if (message.errorMessage) errorLine = String(message.errorMessage).slice(0, 200)
       var full = textOf(message)
       if (full) {
         beginSpeech()
@@ -238,16 +238,16 @@ Scope {
     var ok = false
     var code = ""
     var detail = ""
-    if (_timeout !== "") {
+    if (timeoutKind !== "") {
       code = "timeout"
-      detail = _timeout
-    } else if (_selfKilled) {
+      detail = timeoutKind
+    } else if (selfKilled) {
       code = "killed"
     } else if (String(speechText).trim() !== "") {
       ok = true
-    } else if (_errorLine !== "" || _stopReasonError) {
+    } else if (errorLine !== "" || stopReasonError) {
       code = "pi"
-      detail = _errorLine
+      detail = errorLine
     } else if (exitCode !== 0) {
       code = "exit"
       detail = lastStderr(exitCode)
@@ -286,7 +286,7 @@ Scope {
     interval: Math.max(3, pi.firstTokenTimeoutSec) * 1000
     onTriggered: {
       if (!proc.running) return
-      pi._timeout = "first"
+      pi.timeoutKind = "first"
       proc.signal(15)
     }
   }
@@ -296,7 +296,7 @@ Scope {
     interval: Math.max(10, pi.timeoutSec) * 1000
     onTriggered: {
       if (!proc.running) return
-      pi._timeout = "total"
+      pi.timeoutKind = "total"
       proc.signal(15)
     }
   }
