@@ -84,6 +84,25 @@ cp examples/config.jsonc ~/.config/agent-pet/config.jsonc
 }
 ```
 
+### Optional: web access for the pet
+
+She can look things up with [pi-web-access](https://www.npmjs.com/package/pi-web-access) if you install it into her own
+extension directory (your `~/.pi/agent/extensions/` is never touched):
+
+```bash
+bin/agent-pet-web-access      # npm-installs it under ~/.config/agent-pet/ext/ and prints the config lines
+```
+
+Then add to `murmur` in your config:
+
+```jsonc
+"extensions": ["ext/pi-web-access/node_modules/pi-web-access/dist/index.js"],
+"tools": ["pet_state", "web_search", "fetch_content"]
+```
+
+`tools` is an allowlist: a tool you do not list cannot be called. Zero-config search works through Exa MCP; put provider
+keys in `~/.pi/agent/web-search.json` to choose your own. Remove it again with `bin/agent-pet-web-access --uninstall`.
+
 With an empty `model` nothing is ever spawned. There is no fallback to pi's default model, so a typo cannot quietly spend
 your credits on something expensive.
 

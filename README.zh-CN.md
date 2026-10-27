@@ -79,6 +79,25 @@ cp examples/config.jsonc ~/.config/agent-pet/config.jsonc
 }
 ```
 
+### 可选：让她能上网查资料
+
+装上 [pi-web-access](https://www.npmjs.com/package/pi-web-access) 就可以（装在她自己的扩展目录里，
+不碰你的 `~/.pi/agent/extensions/`）：
+
+```bash
+bin/agent-pet-web-access      # npm 装到 ~/.config/agent-pet/ext/ 下，并打印要加的配置
+```
+
+然后在配置的 `murmur` 里加：
+
+```jsonc
+"extensions": ["ext/pi-web-access/node_modules/pi-web-access/dist/index.js"],
+"tools": ["pet_state", "web_search", "fetch_content"]
+```
+
+`tools` 是白名单：没列出来的工具模型调不到。零配置走 Exa MCP 不需要 key；想指定服务商就把 key 写进
+`~/.pi/agent/web-search.json`。不想要了跑 `bin/agent-pet-web-access --uninstall`。
+
 `model` 为空时不会启动任何进程，也不会退回 pi 的默认模型——写错名字的代价最多是"她不说话"，而不是默默花掉你的额度。
 
 ## 两个 pi 进程的关系
