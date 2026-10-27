@@ -401,7 +401,7 @@ Scope {
       sayInfo(tr("ctxUnknown"))
       return
     }
-    var pct = Math.round(petCtx.pct * 100)
+    var pct = Math.round(petCtx.pct)
     sayInfo(tr("ctxUsage", { pct: pct }))
     var pool = (config.animations || {}).events || {}
     var slot = (pool.context || [])[PS.ctxTier(petCtx.pct)]
