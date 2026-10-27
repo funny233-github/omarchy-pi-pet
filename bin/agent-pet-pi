@@ -82,7 +82,8 @@ common+=(--no-mcp --no-skills --no-prompt-templates --no-context-files --no-appr
 
 # 剥掉会改变 pi 行为的继承变量（用户可能全局设了），再打上宠物自己的标记。
 clean_env() {
-  env \
+  # exec 放在函数体内：bash 的 `exec 函数名` 会把它当外部命令报 not found
+  exec env \
     -u PI_CODING_AGENT_DIR -u PI_CODING_AGENT_SESSION_DIR -u PI_PACKAGE_DIR \
     -u PI_CODING_AGENT -u PI_SESSION_ID -u PI_SESSION_FILE -u PI_PROVIDER \
     -u PI_MODEL -u PI_REASONING_LEVEL \
@@ -126,4 +127,4 @@ persona="$plugin/assets/persona.$lang.md"
 mode=json
 [[ $stream == 0 ]] && mode=text
 
-exec clean_env pi --print --mode "$mode" --system-prompt "$persona" "${common[@]}"
+clean_env pi --print --mode "$mode" --system-prompt "$persona" "${common[@]}"
