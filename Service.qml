@@ -17,10 +17,15 @@ Scope {
 
   readonly property string home: Quickshell.env("HOME")
   readonly property string pluginDir: decodeURIComponent(String(Qt.resolvedUrl(".")).replace(/^file:\/\//, "").replace(/\/$/, ""))
-  readonly property string userConfigPath: home + "/.config/agent-pet/config.jsonc"
-  readonly property string stateDir: home + "/.local/state/agent-pet"
-  // hook 事件 socket 所在目录（0700），与 ext/agent-pet-pi.ts、bin/agent-pet-pi 一致
-  readonly property string runtimeDir: Quickshell.env("XDG_RUNTIME_DIR") + "/agent-pet"
+  // 目录一律走 XDG：用户把 XDG_CONFIG_HOME / XDG_STATE_HOME 指到别处时也要跟着走
+  readonly property string configHome: Quickshell.env("XDG_CONFIG_HOME") || (home + "/.config")
+  readonly property string stateHome: Quickshell.env("XDG_STATE_HOME") || (home + "/.local/state")
+  readonly property string userConfigPath: configHome + "/agent-pet/config.jsonc"
+  readonly property string stateDir: stateHome + "/agent-pet"
+  // socket 所在目录（0700）。XDG_RUNTIME_DIR 没设时按 /run/user/<uid> 兜底，
+  // 与 ext/*.ts 里的算法保持一致（一个在 QML，一个在 Node，必须同源同规则）
+  property string runtimeBase: ""
+  readonly property string runtimeDir: runtimeBase === "" ? "" : runtimeBase + "/agent-pet"
 
   // ------------------------------------------------------------ 配置
   property var config: ({})
@@ -401,7 +406,7 @@ Scope {
       pi.cancel()
       root.speech = null
       Quickshell.execDetached(["bash", "-c",
-        'dir="$HOME/.local/state/agent-pet/pi-sessions"; [ -d "$dir" ] && rm -rf -- "$dir"/*; true'])
+        'dir="${XDG_STATE_HOME:-$HOME/.local/state}/agent-pet/pi-sessions"; [ -d "$dir" ] && rm -rf -- "$dir"/*; true'])
       return "ok"
     }
     function state(): string {
@@ -437,10 +442,24 @@ Scope {
     }
   }
 
-  // 对话记忆、事件 socket 只给本用户访问；目录建好后再开始监听
+  // 运行时目录：先解析（XDG_RUNTIME_DIR 可能没设），再建目录（0700），最后才开监听
   Process {
     running: true
-    command: ["bash", "-c", 'mkdir -p -m 700 "$@"; chmod 700 "$@"', "_", root.stateDir, root.runtimeDir]
+    command: ["bash", "-c", 'printf %s "${XDG_RUNTIME_DIR:-/run/user/$(id -u)}"']
+    stdout: StdioCollector { id: runtimeOut }
+    onExited: function(exitCode) {
+      root.runtimeBase = String(runtimeOut.text || "").trim()
+      if (exitCode !== 0 || root.runtimeBase === "") {
+        console.warn("[pi-pet] 拿不到运行时目录，收不到 pi 事件")
+        return
+      }
+      mkDirs.running = true
+    }
+  }
+
+  Process {
+    id: mkDirs
+    command: ["bash", "-c", 'mkdir -p -m 700 "$@" && chmod 700 "$@"', "_", root.stateDir, root.runtimeDir]
     onExited: function(exitCode) {
       if (exitCode === 0) eventServer.start()
       else console.warn("[pi-pet] 无法创建 " + root.runtimeDir + "，收不到 pi 事件")

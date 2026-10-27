@@ -35,7 +35,8 @@ omarchy plugin add <这个仓库的地址> --enable
 
 ## 配置
 
-内置默认值在 `assets/config.json`，自己的改动写 `~/.config/agent-pet/config.jsonc`（允许注释，保存即生效）。
+内置默认值在 `assets/config.json`，自己的改动写 `$XDG_CONFIG_HOME/agent-pet/config.jsonc`（默认
+`~/.config/agent-pet/config.jsonc`，允许注释，保存即生效）。运行状态目录同样跟随 `XDG_STATE_HOME`。
 
 合并方式是**深合并**：对象逐键合并、数组整体替换、`null` 表示删掉这个键（回退到内置默认）。只需要写你改的部分：
 
@@ -56,7 +57,7 @@ omarchy plugin add <这个仓库的地址> --enable
   "provider": "",                // 只在同名模型需要消歧时填
   "thinking": "low",             // off | minimal | low | medium | high | xhigh | max
   "session": "agent-pet",        // 持久会话 ID；留空 = 每次请求无状态
-  "extensions": [],              // 额外扩展路径；只有这里列出的才会被加载
+  "extensions": [],              // 额外扩展路径；相对路径按配置目录解析
   "tools": ["pet_state"],        // 工具白名单；空数组 = 一个工具都不给
   "intervalSec": 600,
   "stream": true,                // false 退回 `--mode text`，一次性输出

@@ -25,7 +25,9 @@ die() { printf 'agent-pet-pi: %s\n' "$2" >&2; exit "$1"; }
 
 self_dir=$(cd "$(dirname "$0")" && pwd) || die 1 "cannot resolve script dir"
 plugin=${AGENT_PET_PLUGIN:-$(cd "$self_dir/.." && pwd)}
-state=${AGENT_PET_STATE:-$HOME/.local/state/agent-pet}
+config_home=${XDG_CONFIG_HOME:-$HOME/.config}
+state_home=${XDG_STATE_HOME:-$HOME/.local/state}
+state=${AGENT_PET_STATE:-$state_home/agent-pet}
 
 model="" provider="" thinking=low session=agent-pet tools=pet_state lang=zh stream=1
 exts=()
@@ -67,10 +69,14 @@ else
   cmd+=(--no-session)
 fi
 
-# 扩展面：宠物自己的 pet_state 扩展，加上调用方列出的额外路径
+# 扩展面：宠物自己的 pet_state 扩展，加上调用方列出的额外路径。
+# 相对路径按 ~/.config/agent-pet/ 解析——子进程的 cwd 是空的 pi-cwd，按 cwd 解析必然找不到。
 cmd+=(--no-extensions -e "$plugin/ext/pet.ts")
 for path in ${exts+"${exts[@]}"}; do
-  [[ -n $path ]] && cmd+=(-e "$path")
+  [[ -n $path ]] || continue
+  [[ $path == /* ]] || path="$config_home/agent-pet/$path"
+  [[ -e $path ]] || die 78 "extension not found: $path"
+  cmd+=(-e "$path")
 done
 
 # 工具面：非空 = 全量替换成白名单；空 = 全部关掉

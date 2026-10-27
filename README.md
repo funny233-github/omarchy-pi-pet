@@ -38,8 +38,9 @@ omarchy plugin add <this-repo-url> --enable
 
 ## Configuration
 
-Defaults live in `assets/config.json`. Put overrides in `~/.config/agent-pet/config.jsonc`; comments are allowed and the
-file reloads on save.
+Defaults live in `assets/config.json`. Put overrides in `$XDG_CONFIG_HOME/agent-pet/config.jsonc`
+(`~/.config/agent-pet/config.jsonc` by default); comments are allowed and the file reloads on save. Runtime state follows
+`XDG_STATE_HOME` the same way.
 
 Merging is **deep**: objects merge key by key, arrays are replaced whole, and `null` deletes a key so it falls back to
 the built-in default. Write only what you change:
@@ -61,7 +62,7 @@ the built-in default. Write only what you change:
   "provider": "",                // only needed to disambiguate identical model ids
   "thinking": "low",             // off | minimal | low | medium | high | xhigh | max
   "session": "agent-pet",        // persistent session id; empty = stateless per request
-  "extensions": [],              // extra extension paths; only what is listed here loads
+  "extensions": [],              // extra extension paths; relative ones resolve under the config dir
   "tools": ["pet_state"],        // tool allowlist; an empty array means no tools at all
   "intervalSec": 600,
   "stream": true,                // false falls back to `--mode text`, one-shot output
