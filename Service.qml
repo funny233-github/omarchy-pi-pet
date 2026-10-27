@@ -1,6 +1,7 @@
 import QtQuick
 import Quickshell
 import Quickshell.Io
+import qs.Commons
 import "lib/jsonc.mjs" as Jsonc
 import "lib/pi-state.mjs" as PS
 import "lib/i18n.mjs" as I18n
@@ -373,8 +374,14 @@ Scope {
   }
 
   // ------------------------------------------------------------ IPC：omarchy-shell agent-pet <method>
-  IpcHandler {
+  // 用 ShellIpc 而不是裸 IpcHandler：omarchy-shell 先问 shell 自己的 IpcRegistry（ShellIpc 才会注册），
+  // 查不到才退回去起一个 qs ipc 客户端。裸 IpcHandler 只能走后者，慢且易受实例匹配影响。
+  ShellIpc {
     target: "agent-pet"
+
+    function ping(): string {
+      return "pong"
+    }
 
     function say(text: string): string {
       root.speech = null
@@ -441,6 +448,8 @@ Scope {
       petCfg: root.petCfg
     }
   }
+
+  Component.onCompleted: console.log("[pi-pet] service mounted, pluginDir=" + root.pluginDir)
 
   // 运行时目录：先解析（XDG_RUNTIME_DIR 可能没设），再建目录（0700），最后才开监听
   Process {
