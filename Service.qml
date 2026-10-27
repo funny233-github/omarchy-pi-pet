@@ -101,7 +101,7 @@ Scope {
     if (lang === "en" && !("workStatusTexts" in user)) merged.workStatusTexts = I18n.WORK_STATUS_TEXTS_EN
     config = merged
     ready = true
-    if (configError) speak("", tr("configError", { error: configError }))
+    if (configError) speak("", tr("configError", { error: configError }), "", "info")
   }
 
   FileView {
@@ -326,11 +326,11 @@ Scope {
 
   function requestMurmur(manual) {
     if (!murmurReady()) {
-      if (manual) speak("", tr("errNoModel"))
+      if (manual) speak("", tr("errNoModel"), "", "info")
       return "no-model"
     }
     if (pi.busy) {
-      if (manual) speak("", tr("busy"))
+      if (manual) speak("", tr("busy"), "", "info")
       return "busy"
     }
     // 你正在干活时不打扰（只有手动点才允许插一句）
@@ -350,11 +350,11 @@ Scope {
   /** 对话：和碎碎念同一条会话、同一套隔离，只是提示词和停留时长不同。 */
   function requestChat(text) {
     if (!murmurReady()) {
-      speak("", tr("errNoModel"))
+      speak("", tr("errNoModel"), "", "info")
       return "no-model"
     }
     if (pi.busy) {
-      speak("", tr("busy"))
+      speak("", tr("busy"), "", "info")
       return "busy"
     }
     speechMeme = ""
@@ -362,7 +362,7 @@ Scope {
     var sep = lang === "en" ? " " : ""
     var prompt = tr("chatPrompt", { text: text }) + sep + tr("chatStyle")
     if (!pi.run(prompt, "chat")) {
-      speak("", tr("busy"))
+      speak("", tr("busy"), "", "info")
       return "busy"
     }
     return "ok"
@@ -380,11 +380,11 @@ Scope {
   function showContext() {
     var ws = workStatus
     if (!ws || !(ws.ctxPercent >= 0)) {
-      speak("", tr("ctxUnknown"))
+      speak("", tr("ctxUnknown"), "", "info")
       return
     }
     var pct = Math.round(ws.ctxPercent * 100)
-    speak("", tr("ctxUsage", { pct: pct }))
+    speak("", tr("ctxUsage", { pct: pct }), "", "info")
     var pool = (config.animations || {}).events || {}
     var slot = (pool.context || [])[PS.ctxTier(ws.ctxPercent)]
     if (slot !== undefined) playRequest("", pickPoolSlot(slot))
