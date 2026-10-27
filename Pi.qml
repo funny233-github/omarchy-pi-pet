@@ -42,7 +42,7 @@ Scope {
   readonly property string displayText: shown >= speechText.length ? speechText : speechText.slice(0, shown)
   readonly property string displayThinking: phase === "thinking" ? thinkText : ""
 
-  signal changed()
+  signal tick()
   // ok=true 表示这次成功说出了话；否则 code 是 "timeout" / "killed" / "pi" / "exit" / "silent"
   signal finished(bool ok, string code, string detail)
 
@@ -65,7 +65,7 @@ Scope {
     streaming = true
     firstTokenTimer.restart()
     totalTimer.restart()
-    changed()
+    tick()
     return true
   }
 
@@ -115,7 +115,7 @@ Scope {
       beginSpeech()
       speechText += String(line) + "\n"
       firstTokenTimer.stop()
-      changed()
+      tick()
       return
     }
 
@@ -130,7 +130,7 @@ Scope {
       var d = ev.assistantMessageEvent || {}
       if (d.type === "thinking_start") {
         firstTokenTimer.stop()
-        changed()
+        tick()
       } else if (d.type === "thinking_delta") {
         firstTokenTimer.stop()
         appendThinking(d.delta)
@@ -141,15 +141,15 @@ Scope {
         firstTokenTimer.stop()
         beginSpeech()
         speechText += String(d.delta || "")
-        changed()
+        tick()
       } else if (d.type === "text_end") {
         beginSpeech()
         // 权威内容：用它覆盖前面拼的，丢包也不会残句
         speechText = String(d.content || speechText)
-        changed()
+        tick()
       } else if (d.type === "toolcall_start") {
         notice = "（" + String(d.toolName || "tool") + "）"
-        changed()
+        tick()
       } else if (d.type === "error") {
         _errorLine = String(d.error || d.reason || "").slice(0, 200)
       }
@@ -165,7 +165,7 @@ Scope {
       if (full) {
         beginSpeech()
         speechText = full
-        changed()
+        tick()
       }
     }
   }
@@ -188,18 +188,18 @@ Scope {
     phase = "speech"
     thinkText = ""
     notice = ""
-    changed()
+    tick()
   }
 
   function appendThinking(delta) {
     if (!showThinking) return
     if (phase !== "thinking") {
       phase = "thinking"
-      changed()
+      tick()
     }
     if (thinkText.length >= thinkingMaxChars) return
     thinkText = (thinkText + String(delta || "")).slice(0, thinkingMaxChars)
-    changed()
+    tick()
   }
 
   // ------------------------------------------------------------ 进程
@@ -255,7 +255,7 @@ Scope {
       // 只想了没说话（实测中断时会出现），静默收尾
       code = "silent"
     }
-    changed()
+    tick()
     finished(ok, code, detail)
   }
 
@@ -275,7 +275,7 @@ Scope {
         if (backlog > 40) step = step * 2
         pi.shown = Math.min(pi.speechText.length, pi.shown + step)
       }
-      pi.changed()
+      pi.tick()
     }
   }
 

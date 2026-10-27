@@ -243,7 +243,7 @@ Scope {
     showThinking: root.murmur.showThinking !== false
     firstTokenTimeoutSec: Number(root.murmur.firstTokenTimeoutSec) || 15
     timeoutSec: Number(root.murmur.timeoutSec) || 120
-    onChanged: root.syncSpeech()
+    onTick: root.syncSpeech()
     onFinished: function(ok, code, detail) { root.onSpeechFinished(ok, code, detail) }
   }
 
