@@ -1,9 +1,11 @@
 /**
  * 宠物子进程专用扩展：只给"宠物自己的 pi"用（bin/agent-pet-pi 通过 -e 显式加载）。
  *
- * 注册唯一一个工具 pet_state：让模型能回头看桌面宠物此刻知道的状态
- * （你正在跑的 pi 会话在干什么、上下文多满、宠物是否被隐藏）。
- * 这是唯一需要回包的通道，所以走一问一答：带 id 请求，收一行应答。
+ * 两个职责：
+ *   1) 注册唯一工具 pet_state：让模型回头看桌面宠物此刻知道的状态（你在干嘛、上下文多满）。
+ *      这是需要回包的通道，走一问一答：带 id 请求，收一行应答。
+ *   2) 每轮结束时把"宠物自己"这个持久会话的上下文占用上报回主进程（单向，src=child, e=petctx），
+ *      供「查看上下文」菜单显示——不是看你的 TUI 会话，是看她自己的脑袋装了多少。
  *
  * 注意：这个文件只会在子进程里被加载，因此不检查 AGENT_PET_INTERNAL（子进程里它就是 1）。
  */
@@ -25,6 +27,35 @@ function uid(): number {
 	} catch {
 		return 1000;
 	}
+}
+
+/** 单向推送一行，不等回包；宠物没在运行就静默丢弃。 */
+function sendOne(payload: Record<string, unknown>): void {
+	try {
+		const socket = connect(sockPath());
+		const timer = setTimeout(() => {
+			try {
+				socket.destroy();
+			} catch {}
+		}, 500);
+		socket.on("error", () => {
+			clearTimeout(timer);
+			try {
+				socket.destroy();
+			} catch {}
+		});
+		socket.on("connect", () => {
+			try {
+				socket.write(`${JSON.stringify(payload)}\n`);
+				socket.end();
+			} catch {
+				try {
+					socket.destroy();
+				} catch {}
+			}
+		});
+		socket.on("close", () => clearTimeout(timer));
+	} catch {}
 }
 
 /** 向宠物要一份当前状态快照；宠物没在运行或超时都返回 null。 */
@@ -80,6 +111,16 @@ function requestState(): Promise<Record<string, unknown> | null> {
 }
 
 export default function petState(pi: ExtensionAPI): void {
+	// 每轮结束上报自己的上下文占用（压缩后 percent 可能为 null，跳过，保留上一份）
+	pi.on("turn_end", (_event, ctx) => {
+		try {
+			const usage = ctx.getContextUsage?.();
+			if (!usage) return;
+			if (usage.percent === null || usage.percent === undefined) return;
+			sendOne({ v: 1, src: "child", e: "petctx", pct: usage.percent, tok: usage.tokens, win: usage.contextWindow });
+		} catch {}
+	});
+
 	pi.registerTool({
 		name: "pet_state",
 		label: "Pet state",

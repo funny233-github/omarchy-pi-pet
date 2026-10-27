@@ -157,6 +157,8 @@ Scope {
   // ------------------------------------------------------------ 工作状态
   property var wsStore: PS.createStore()
   property var workStatus: null
+  // 宠物自己那个持久会话（--session-id agent-pet）的上下文占用，由子进程 pet.ts 上报
+  property var petCtx: null
 
   EventServer {
     id: eventServer
@@ -190,7 +192,15 @@ Scope {
     } catch (e) {
       return "bad-json"
     }
-    if (!ev || ev.src !== "host") return "ignored"
+    if (!ev) return "bad-event"
+    if (ev.src === "child" && ev.e === "petctx") {
+      var pct = Number(ev.pct)
+      if (Number.isFinite(pct)) {
+        petCtx = { pct: pct, tok: ev.tok, win: ev.win }
+      }
+      return "petctx"
+    }
+    if (ev.src !== "host") return "ignored"
     var res = PS.applyEvent(wsStore, ev, Date.now())
     if (res.entered) notifyFor(res.entry, res.entered)
     if (res.changed) refreshWorkStatus()
@@ -387,15 +397,14 @@ Scope {
 
   // ------------------------------------------------------------ 上下文占用（原"余额"）
   function showContext() {
-    var ws = workStatus
-    if (!ws || !(ws.ctxPercent >= 0)) {
+    if (!petCtx || !(petCtx.pct >= 0)) {
       sayInfo(tr("ctxUnknown"))
       return
     }
-    var pct = Math.round(ws.ctxPercent * 100)
+    var pct = Math.round(petCtx.pct * 100)
     sayInfo(tr("ctxUsage", { pct: pct }))
     var pool = (config.animations || {}).events || {}
-    var slot = (pool.context || [])[PS.ctxTier(ws.ctxPercent)]
+    var slot = (pool.context || [])[PS.ctxTier(petCtx.pct)]
     if (slot !== undefined) playRequest("", pickPoolSlot(slot))
   }
 
@@ -461,6 +470,7 @@ Scope {
         workStatus: ws,
         sessions: root.wsStore.sessions,
         ctxTier: ws && ws.ctxPercent >= 0 ? PS.ctxTier(ws.ctxPercent) : -1,
+        petCtx: root.petCtx,
         speech: root.speech,
         murmur: {
           ready: root.murmurReady(),
