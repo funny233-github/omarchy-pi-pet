@@ -1,0 +1,99 @@
+{
+  // ============================================================
+  // Pi Pet 配置示例
+  //
+  // 放在 ~/.config/agent-pet/config.jsonc（跟随 $XDG_CONFIG_HOME）。
+  // 允许注释；保存即热重载，不用重启 shell。
+  //
+  // 合并方式是「深合并」：
+  //   - 对象逐键合并，你写的键覆盖默认值，没写的键保持默认；
+  //   - 数组整体替换（写几个就是几个）；
+  //   - 某个键写 null 表示「删掉它、回退默认」。
+  // 所以下面每个字段都能单独删掉，剩下的就是默认行为。
+  // ============================================================
+
+  // 界面语言：auto（跟随系统）/ zh / en
+  "language": "zh",
+
+  // 宠物本身
+  "pet": {
+    "size": 300,             // 边长（像素）
+    "corner": "bottom-right", // bottom-left / bottom-right / top-left / top-right
+    "marginX": 24,           // 到屏幕边缘的水平距离
+    "marginY": 0             // 到屏幕底部的垂直距离
+  },
+
+  // 头顶气泡
+  "bubble": {
+    "detail": true,          // 工作状态气泡里显示「工具 · 命令」摘要
+    "fontSize": 14,
+    "font": "",              // 字体文件绝对路径（~ 开头会自动展开）；空 = 系统默认
+    "width": 240             // 流式打字时气泡的固定宽度
+  },
+
+  // 左键点击行为：react（回应动画）/ context（报上下文占用）
+  "click": "react",
+
+  // 桌面通知
+  "notify": {
+    "waiting": true,         // pi 等你确认
+    "done": true,            // pi 跑完
+    "error": true,           // pi 出错
+    "onlyWhenUnfocused": true // 终端在前台时不弹
+  },
+
+  // 物理参数（拖拽甩抛的手感）
+  "physics": {
+    "gravity": 1400,
+    "restitution": 0.78,     // 弹性
+    "groundFriction": 2.5,
+    "ceilingBounce": true,
+    "throwPower": 1
+  },
+
+  // ============================================================
+  // 说话（碎碎念 + 对话共用这一个配置）
+  // ============================================================
+  "murmur": {
+    "enabled": true,                 // 总开关；false 时完全不调用模型
+    "model": "anthropic/claude-haiku-4-5",  // ★必填，provider/model；留空 = 整个说话功能关闭
+    "provider": "",                  // 一般不用填；多个 provider 有同名模型时才需要
+    "thinking": "low",               // off / minimal / low / medium / high / xhigh / max
+
+    "session": "agent-pet",          // 持久会话 ID；留空 = 每次无状态（不记得之前聊过啥）
+    "intervalSec": 600,              // 自动碎碎念间隔（秒）
+
+    // 流式显示
+    "stream": true,                  // false = 一次性输出整句
+    "typewriterCps": 30,             // 打字速度（字/秒），0 = 原速
+    "showThinking": true,            // 灰字显示她「正在想」的内容
+    "firstTokenTimeoutSec": 15,      // 首个字超时
+    "timeoutSec": 120,               // 总超时
+
+    // 给宠物自己的 pi 装什么（严格隔离，见 README）
+    "tools": ["pet_state"],          // 工具白名单；[] = 一个工具都不给
+    "extensions": []                 // 额外扩展路径；相对路径按 ~/.config/agent-pet/ 解析
+  },
+
+  // ============================================================
+  // 以下一般不用动
+  // ============================================================
+
+  // 六档工作状态的文案（think / work / result / wait / success / error）
+  "workStatusTexts": [
+    ["正在认真想下一步呢", "让我整理一下思路~"],
+    ["正在处理任务呢", "这一步正在进行中哦"],
+    ["这一步处理好啦，接着看下一步"],
+    ["需要你确认一下呢", "轮到你来决定啦，等你~"],
+    ["这一轮搞定啦，真棒！"],
+    ["这一步好像没跑通呢", "刚才的操作遇到点问题哦"]
+  ],
+
+  // 动画：idle / turn / clicks / moves / categories / events 全部可覆盖。
+  // 想改某个池子，只写那一项即可（对象深合并），例如：
+  //   "animations": { "idle": ["待机呼吸休闲", "东张西望"] }
+  "animations": {},
+
+  // 各动画池的随机权重
+  "animationWeights": { "idle": 10, "turn": 5, "move": 5 }
+}

@@ -56,14 +56,12 @@ Defaults live in `assets/config.json`. Put overrides in `$XDG_CONFIG_HOME/agent-
 `XDG_STATE_HOME` the same way.
 
 Merging is **deep**: objects merge key by key, arrays are replaced whole, and `null` deletes a key so it falls back to
-the built-in default. Write only what you change:
+the built-in default. A fully commented, drop-in example lives at
+[`examples/config.jsonc`](examples/config.jsonc) — copy it and edit:
 
-```jsonc
-{
-  "pet": { "size": 260 },
-  "bubble": { "detail": true },
-  "murmur": { "enabled": true, "model": "anthropic/claude-haiku-4-5" }
-}
+```bash
+cp examples/config.jsonc ~/.config/agent-pet/config.jsonc
+# set murmur.model, then edit the rest to taste
 ```
 
 ### Murmurs

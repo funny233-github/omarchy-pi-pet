@@ -51,14 +51,12 @@ alias pi-pet='pi -e ~/.config/omarchy/plugins/local.pi-pet/ext/agent-pet-pi.ts'
 内置默认值在 `assets/config.json`，自己的改动写 `$XDG_CONFIG_HOME/agent-pet/config.jsonc`（默认
 `~/.config/agent-pet/config.jsonc`，允许注释，保存即生效）。运行状态目录同样跟随 `XDG_STATE_HOME`。
 
-合并方式是**深合并**：对象逐键合并、数组整体替换、`null` 表示删掉这个键（回退到内置默认）。只需要写你改的部分：
+合并方式是**深合并**：对象逐键合并、数组整体替换、`null` 表示删掉这个键（回退到内置默认）。一份带完整注释、
+可直接用的示例在 [`examples/config.jsonc`](examples/config.jsonc)，复制过去改就行：
 
-```jsonc
-{
-  "pet": { "size": 260 },
-  "bubble": { "detail": true },
-  "murmur": { "enabled": true, "model": "anthropic/claude-haiku-4-5" }
-}
+```bash
+cp examples/config.jsonc ~/.config/agent-pet/config.jsonc
+# 填好 murmur.model，其余按需改
 ```
 
 ### 碎碎念
