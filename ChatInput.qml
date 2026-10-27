@@ -51,7 +51,10 @@ Rectangle {
     Text {
       anchors.verticalCenter: parent.verticalCenter
       visible: input.text === ""
-      text: chat.service ? chat.service.tr(chat.service.piBusy ? "chatBusy" : "chatPlaceholder") : ""
+      text: chat.service
+        ? chat.service.tr(chat.service.piBusy ? "chatBusy"
+          : chat.service.murmurReady() ? "chatPlaceholder" : "chatNoModel")
+        : ""
       color: Color.muted
       font: input.font
     }

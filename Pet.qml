@@ -485,10 +485,7 @@ Item {
       return
     }
     if (leaf.action === "chat") {
-      if (!service.murmurReady()) {
-        service.speak("", service.tr("errNoModel"))
-        return
-      }
+      // 门槛不放在这里：没配模型也让输入框打开，按回车时再提示，不然点了没反应很困惑
       overlay.openChat(pet)
       return
     }

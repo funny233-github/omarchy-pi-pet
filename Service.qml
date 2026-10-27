@@ -420,6 +420,9 @@ Scope {
     function murmur(): string {
       return root.requestMurmur(true)
     }
+    function chat(text: string): string {
+      return root.requestChat(text)
+    }
     function context(): string {
       root.showContext()
       return "ok"
