@@ -1,9 +1,9 @@
 #!/usr/bin/env bash
-# 给需要可执行位的脚本统一 chmod +x。
+# 给 bin/ 下的脚本补可执行位。
 #
-# 为什么要单独一个脚本：这个仓库常被放在 sandboxfs / 只读挂载里（例如 gondolin 的 /workspace），
-# 那边 chmod 会直接失败，QML 只好一律用 `bash <path>` 调用。在正常的宿主目录里跑一次这个脚本，
-# 脚本就能直接执行、也符合 Omarchy 插件的一般预期。
+# 正常情况不需要它：git 索引里这些文件是 100755，clone / checkout 下来本来就是可执行的。
+# 只有在这种「改了 chmod 却不生效」的挂载上（例如 gondolin 的 sandboxfs）才需要跑一次，
+# 让脚本能被直接执行；QML 内部一律用 `bash <path>` 调用，不受影响。
 #
 # 用法：
 #   ./chmod.sh            # 设置可执行位
@@ -21,8 +21,8 @@ problems=0
 changed=0
 skipped=0
 
-# 仓库根脚本 + bin/ 下所有带 shebang 的文件
-candidates=(chmod.sh)
+# bin/ 下所有带 shebang 的文件（不修自己：能跑起来说明已经可执行，跑不起来说明是挂载问题）
+candidates=()
 for file in bin/*; do
   [[ -f $file ]] || continue
   IFS= read -r first <"$file" || true
