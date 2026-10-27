@@ -12,8 +12,9 @@
 #   --session <id>        会话 ID，空 = --no-session（无状态）
 #   --tools <a,b>         工具白名单，空 = -nt（零工具）
 #   --ext <path>          额外扩展，可重复；宠物自己的 ext/pet.ts 总会加载
-#   --lang <zh|en>        选 persona 文件
+#   --lang <zh|en>        选 persona 文件（说话模式）
 #   --stream <1|0>        1 = --mode json（流式），0 = --mode text
+#   --compact             不生成回复，对 --session 的持久会话做一次上下文压缩
 #   --plugin <dir>        插件目录（默认从脚本位置推）
 #   --state <dir>         状态目录（默认 ~/.local/state/agent-pet）
 #
@@ -29,7 +30,7 @@ config_home=${XDG_CONFIG_HOME:-$HOME/.config}
 state_home=${XDG_STATE_HOME:-$HOME/.local/state}
 state=${AGENT_PET_STATE:-$state_home/agent-pet}
 
-model="" provider="" thinking=low session=agent-pet tools=pet_state lang=zh stream=1
+model="" provider="" thinking=low session=agent-pet tools=pet_state lang=zh stream=1 compact=0
 exts=()
 
 while (( $# )); do
@@ -42,6 +43,7 @@ while (( $# )); do
     --ext) exts+=("${2-}"); shift 2 ;;
     --lang) lang=${2-}; shift 2 ;;
     --stream) stream=${2-1}; shift 2 ;;
+    --compact) compact=1; shift ;;
     --plugin) plugin=${2-}; shift 2 ;;
     --state) state=${2-}; shift 2 ;;
     *) die 2 "unknown argument: $1" ;;
@@ -52,6 +54,71 @@ done
 [[ -n $plugin && -d $plugin ]] || die 1 "plugin dir not found: $plugin"
 command -v pi >/dev/null || die 127 "pi not found on PATH"
 
+mkdir -p "$state/pi-cwd" "$state/pi-sessions" || die 1 "cannot create state dirs under $state"
+cd "$state/pi-cwd" || die 1 "cannot enter work dir"
+
+# 公共隔离 flag（说话与 compact 共用）
+common=(--model "$model")
+[[ -n $provider ]] && common+=(--provider "$provider")
+common+=(--thinking "$thinking")
+if [[ -n $session ]]; then
+  common+=(--session-id "$session" --session-dir "$state/pi-sessions")
+else
+  common+=(--no-session)
+fi
+common+=(--no-extensions -e "$plugin/ext/pet.ts")
+for path in ${exts+"${exts[@]}"}; do
+  [[ -n $path ]] || continue
+  [[ $path == /* ]] || path="$config_home/agent-pet/$path"
+  [[ -e $path ]] || die 78 "extension not found: $path"
+  common+=(-e "$path")
+done
+if [[ -n $tools ]]; then
+  common+=(--tools "$tools")
+else
+  common+=(-nt)
+fi
+common+=(--no-mcp --no-skills --no-prompt-templates --no-context-files --no-approve)
+
+# 剥掉会改变 pi 行为的继承变量（用户可能全局设了），再打上宠物自己的标记。
+clean_env() {
+  env \
+    -u PI_CODING_AGENT_DIR -u PI_CODING_AGENT_SESSION_DIR -u PI_PACKAGE_DIR \
+    -u PI_CODING_AGENT -u PI_SESSION_ID -u PI_SESSION_FILE -u PI_PROVIDER \
+    -u PI_MODEL -u PI_REASONING_LEVEL \
+    AGENT_PET_INTERNAL=1 PI_TELEMETRY=0 PI_SKIP_VERSION_CHECK=1 PI_OFFLINE=1 \
+    "$@"
+}
+
+# ---------------------------------------------------------------- compact
+# 用 RPC 的 compact 命令压缩持久会话。pi --mode rpc 在 stdin EOF 时立即 shutdown，
+# 会跟异步 compact 抢跑，所以用 coproc 保持 stdin 打开，读到 compact 响应才关。
+if [[ $compact == 1 ]]; then
+  [[ -n $session ]] || die 2 "stateless session has nothing to compact"
+  coproc RPC { clean_env pi --mode rpc "${common[@]}"; }
+  printf '{"type":"compact","id":"c1"}\n' >&"${RPC[1]}"
+
+  result=""
+  while IFS= read -r line <&"${RPC[0]}"; do
+    if [[ $line == *'"command":"compact"'* ]]; then
+      result=$line
+      break
+    fi
+  done
+
+  exec {RPC[1]}>&-
+  wait "$RPC_PID" 2>/dev/null || true
+
+  if [[ -n $result ]]; then
+    # 输出原始 response JSON，交给 Service 解析（脚本不依赖 jq）
+    printf '%s\n' "$result"
+    exit 0
+  fi
+  echo "no-response" >&2
+  exit 1
+fi
+
+# ---------------------------------------------------------------- 说话
 persona="$plugin/assets/persona.$lang.md"
 [[ -f $persona ]] || persona="$plugin/assets/persona.zh.md"
 [[ -f $persona ]] || die 2 "persona prompt missing under $plugin/assets"
@@ -59,45 +126,4 @@ persona="$plugin/assets/persona.$lang.md"
 mode=json
 [[ $stream == 0 ]] && mode=text
 
-cmd=(pi --print --mode "$mode" --system-prompt "$persona" --model "$model")
-[[ -n $provider ]] && cmd+=(--provider "$provider")
-cmd+=(--thinking "$thinking")
-
-if [[ -n $session ]]; then
-  cmd+=(--session-id "$session" --session-dir "$state/pi-sessions")
-else
-  cmd+=(--no-session)
-fi
-
-# 扩展面：宠物自己的 pet_state 扩展，加上调用方列出的额外路径。
-# 相对路径按 ~/.config/agent-pet/ 解析——子进程的 cwd 是空的 pi-cwd，按 cwd 解析必然找不到。
-cmd+=(--no-extensions -e "$plugin/ext/pet.ts")
-for path in ${exts+"${exts[@]}"}; do
-  [[ -n $path ]] || continue
-  [[ $path == /* ]] || path="$config_home/agent-pet/$path"
-  [[ -e $path ]] || die 78 "extension not found: $path"
-  cmd+=(-e "$path")
-done
-
-# 工具面：非空 = 全量替换成白名单；空 = 全部关掉
-if [[ -n $tools ]]; then
-  cmd+=(--tools "$tools")
-else
-  cmd+=(-nt)
-fi
-
-cmd+=(--no-mcp --no-skills --no-prompt-templates --no-context-files --no-approve)
-
-mkdir -p "$state/pi-cwd" "$state/pi-sessions" || die 1 "cannot create state dirs under $state"
-cd "$state/pi-cwd" || die 1 "cannot enter work dir"
-
-# 剥掉会改变 pi 行为的继承变量（用户可能全局设了），再打上宠物自己的标记。
-exec env \
-  -u PI_CODING_AGENT_DIR -u PI_CODING_AGENT_SESSION_DIR -u PI_PACKAGE_DIR \
-  -u PI_CODING_AGENT -u PI_SESSION_ID -u PI_SESSION_FILE -u PI_PROVIDER \
-  -u PI_MODEL -u PI_REASONING_LEVEL \
-  AGENT_PET_INTERNAL=1 \
-  PI_TELEMETRY=0 \
-  PI_SKIP_VERSION_CHECK=1 \
-  PI_OFFLINE=1 \
-  "${cmd[@]}"
+exec clean_env pi --print --mode "$mode" --system-prompt "$persona" "${common[@]}"

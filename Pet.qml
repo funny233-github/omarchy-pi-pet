@@ -493,6 +493,10 @@ Item {
       service.showContext()
       return
     }
+    if (leaf.action === "compact") {
+      service.requestCompact()
+      return
+    }
     if (leaf.action === "home") {
       goHome()
       return

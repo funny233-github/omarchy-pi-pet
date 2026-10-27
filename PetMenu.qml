@@ -31,6 +31,7 @@ Item {
     tools.push({ label: service.tr(murmurLabel), action: "murmur" })
     tools.push({ label: service.tr(service.murmurReady() ? "menuChat" : "menuChatNoModel"), action: "chat" })
     tools.push({ label: service.tr("menuContext"), action: "context" })
+    tools.push({ label: service.tr("menuCompact"), action: "compact" })
     tools.push({ label: service.tr("menuHome"), action: "home" })
     tools.push({ label: service.tr("menuReload"), action: "reload" })
     tools.push({ label: service.tr("menuHide"), action: "hide" })

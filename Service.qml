@@ -268,6 +268,71 @@ Scope {
 
   readonly property bool piBusy: pi.busy
   property string speechMeme: ""
+
+  // ------------------------------------------------------------ 整理记忆（compact 持久会话）
+  Process {
+    id: compactProc
+    stdout: StdioCollector { id: compactOut }
+    stderr: StdioCollector { id: compactErr }
+    onExited: function(exitCode) { root.onCompactFinished(exitCode) }
+  }
+
+  function requestCompact() {
+    if (!murmurReady()) {
+      sayInfo(tr("errNoModel"))
+      return "no-model"
+    }
+    if (pi.busy || compactProc.running) {
+      sayInfo(tr("busy"))
+      return "busy"
+    }
+    var sessionId = root.murmur.session === undefined ? "agent-pet" : String(root.murmur.session)
+    if (sessionId === "") {
+      sayInfo(tr("compactNoSession"))
+      return "no-session"
+    }
+    var cmd = ["bash", pluginDir + "/bin/agent-pet-pi",
+      "--model", String(root.murmur.model || ""),
+      "--session", sessionId,
+      "--compact",
+      "--plugin", pluginDir, "--state", stateDir]
+    if (String(root.murmur.provider || "")) cmd = cmd.concat(["--provider", String(root.murmur.provider)])
+    compactProc.command = cmd
+    compactProc.running = true
+    sayInfo(tr("compactRunning"))
+    return "ok"
+  }
+
+  function onCompactFinished(exitCode) {
+    // compact 后旧的占用不再准确：清掉，等下次说话时子进程重新上报
+    petCtx = null
+    var text = String(compactOut.text || "").trim()
+    var ok = false
+    var detail = ""
+    if (text) {
+      try {
+        var resp = JSON.parse(text)
+        if (resp.success && resp.data) {
+          ok = true
+          detail = tr("compactDone", {
+            before: resp.data.tokensBefore,
+            after: resp.data.estimatedTokensAfter
+          })
+        } else {
+          detail = tr("compactFailed", { reason: String(resp.error || "?") })
+        }
+      } catch (e) {
+        detail = tr("compactFailed", { reason: text.slice(0, 80) })
+      }
+    } else if (exitCode !== 0) {
+      var errLine = String(compactErr.text || "").trim().split("\n").pop() || ("exit " + exitCode)
+      detail = tr("compactFailed", { reason: errLine.slice(0, 80) })
+    } else {
+      detail = tr("compactFailed", { reason: "no response" })
+    }
+    sayInfo(detail)
+  }
+
   // 气泡停留时长：碎碎念一句就走，对话多留一会儿
   property int speechHoldMs: 12000
 
@@ -442,6 +507,9 @@ Scope {
     function context(): string {
       root.showContext()
       return "ok"
+    }
+    function compact(): string {
+      return root.requestCompact()
     }
     function reload(): string {
       root.reloadConfig()
