@@ -484,6 +484,14 @@ Item {
       service.requestMurmur(true)
       return
     }
+    if (leaf.action === "chat") {
+      if (!service.murmurReady()) {
+        service.speak("", service.tr("errNoModel"))
+        return
+      }
+      overlay.openChat(pet)
+      return
+    }
     if (leaf.action === "context") {
       service.showContext()
       return

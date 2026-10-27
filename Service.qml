@@ -249,6 +249,8 @@ Scope {
 
   readonly property bool piBusy: pi.busy
   property string speechMeme: ""
+  // 气泡停留时长：碎碎念一句就走，对话多留一会儿
+  property int speechHoldMs: 12000
 
   function setSpeech(next) {
     var cur = speech
@@ -314,7 +316,7 @@ Scope {
 
   Timer {
     id: speechTimer
-    interval: 12000
+    interval: root.speechHoldMs
     onTriggered: root.speech = null
   }
 
@@ -337,11 +339,33 @@ Scope {
     var names = Object.keys(config.memes || {})
     if (names.length && Math.random() < 0.5) meme = names[Math.floor(Math.random() * names.length)]
     speechMeme = config.memes && config.memes[meme] ? meme : ""
+    speechHoldMs = 12000
     var sep = lang === "en" ? " " : ""
     var prompt = tr("murmurNow", { time: Qt.formatTime(new Date(), "HH:mm") })
     if (speechMeme) prompt += sep + tr("murmurMeme", { desc: config.memes[speechMeme] })
     prompt += sep + tr("murmurOutput")
     return pi.run(prompt, "murmur") ? "ok" : "busy"
+  }
+
+  /** 对话：和碎碎念同一条会话、同一套隔离，只是提示词和停留时长不同。 */
+  function requestChat(text) {
+    if (!murmurReady()) {
+      speak("", tr("errNoModel"))
+      return "no-model"
+    }
+    if (pi.busy) {
+      speak("", tr("busy"))
+      return "busy"
+    }
+    speechMeme = ""
+    speechHoldMs = 30000
+    var sep = lang === "en" ? " " : ""
+    var prompt = tr("chatPrompt", { text: text }) + sep + tr("chatStyle")
+    if (!pi.run(prompt, "chat")) {
+      speak("", tr("busy"))
+      return "busy"
+    }
+    return "ok"
   }
 
   Timer {

@@ -13,6 +13,8 @@ Omarchy 桌面宠物，只盯着 **pi**，并且用它自己的声音跟你说�
 - **实时工作状态**：六档（思考中、干活、看结果、等你确认、完成、出错），由一个小 pi 扩展驱动，同时显示项目名、
   正在跑的工具和命令、上下文占用。
 - **碎碎念**：每隔几分钟说一句短话，由你自己的 `pi` 和模型生成，流式上屏，能看见她"正在想"的那几行。
+- **对话**：右键 →「对话」可以和她说话。回复流进同一个气泡，并且和碎碎念共用一条会话，所以她会记得聊过什么
+  （`agent-pet forget` 清空）。
 - **提醒**：pi 需要你确认、跑完、出错时发桌面通知。只在终端不在前台时发，且只带 agent 名和状态。
 
 ## 依赖
@@ -64,7 +66,7 @@ alias pi-pet='pi -e ~/.config/omarchy/plugins/local.pi-pet/ext/agent-pet-pi.ts'
 ```jsonc
 "murmur": {
   "enabled": false,              // 关闭时完全不调用模型
-  "model": "",                   // 必填，写成 provider/model；留空等于关闭这个功能
+  "model": "",                   // 必填，写成 provider/model；留空等于关闭碎碎念和对话
   "provider": "",                // 只在同名模型需要消歧时填
   "thinking": "low",             // off | minimal | low | medium | high | xhigh | max
   "session": "agent-pet",        // 持久会话 ID；留空 = 每次请求无状态
@@ -130,6 +132,7 @@ omarchy-shell agent-pet forget    # 清空她的持久会话
 | 路径 | 说明 |
 |---|---|
 | `Service.qml` | 配置、会话状态、说话、通知、IPC |
+| `ChatInput.qml` | 「对话」菜单项背后的输入框 |
 | `Pi.qml` | 启动子 pi、解析事件流、驱动相位机 |
 | `EventServer.qml` | 两个生产者共用的 unix socket |
 | `ext/agent-pet-pi.ts` | 宿主侧上报扩展，用 `pi -e` 显式导入 |

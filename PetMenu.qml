@@ -29,6 +29,7 @@ Item {
     var tools = []
     var murmurLabel = service.piBusy ? "menuMurmurBusy" : service.murmurReady() ? "menuMurmur" : "menuNoModel"
     tools.push({ label: service.tr(murmurLabel), action: "murmur" })
+    tools.push({ label: service.tr(service.murmurReady() ? "menuChat" : "menuChatNoModel"), action: "chat" })
     tools.push({ label: service.tr("menuContext"), action: "context" })
     tools.push({ label: service.tr("menuHome"), action: "home" })
     tools.push({ label: service.tr("menuReload"), action: "reload" })

@@ -23,7 +23,7 @@ PanelWindow {
   exclusiveZone: 0
   WlrLayershell.namespace: "pi-pet"
   WlrLayershell.layer: WlrLayer.Top
-  WlrLayershell.keyboardFocus: menu.open ? WlrKeyboardFocus.Exclusive : WlrKeyboardFocus.None
+  WlrLayershell.keyboardFocus: chat.open || menu.open ? WlrKeyboardFocus.Exclusive : WlrKeyboardFocus.None
   visible: !service.hidden
 
   // PanelWindow 的 width/height 是 implicit 尺寸的别名，四边锚定时恒为 0；真实尺寸从填满窗口的 Item 取
@@ -49,17 +49,36 @@ PanelWindow {
     overlay: win
   }
 
+  Region {
+    id: chatRegion
+    x: chat.x
+    y: chat.y
+    width: chat.open ? chat.width : 0
+    height: chat.open ? chat.height : 0
+  }
+
   mask: Region {
-    regions: menu.open ? [fullRegion] : [pet.hitRegion]
+    regions: menu.open ? [fullRegion] : [pet.hitRegion, chatRegion]
   }
 
   function openMenu(targetPet, px, py) {
     menu.show(targetPet, px, py)
   }
 
+  function openChat(targetPet) {
+    chat.show(targetPet)
+  }
+
   PetMenu {
     id: menu
     anchors.fill: parent
     service: win.service
+  }
+
+  ChatInput {
+    id: chat
+    service: win.service
+    areaWidth: win.areaW
+    areaHeight: win.areaH
   }
 }
