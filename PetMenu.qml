@@ -27,9 +27,9 @@ Item {
     pet = targetPet
     var t = I18n.translateMenuTree(Shared.buildMenuTree(targetPet.anims), service.lang)
     var tools = []
-    if (targetPet.cfg.whisperEnabled !== false) tools.push({ label: service.tr(service.llmBusy ? "menuWhisperBusy" : "menuWhisper"), action: "whisper" })
-    tools.push({ label: service.tr("menuChat"), action: "chat" })
-    if (targetPet.cfg.balanceEnabled !== false) tools.push({ label: service.tr("menuUsage"), action: "usage" })
+    var murmurLabel = service.piBusy ? "menuMurmurBusy" : service.murmurReady() ? "menuMurmur" : "menuNoModel"
+    tools.push({ label: service.tr(murmurLabel), action: "murmur" })
+    tools.push({ label: service.tr("menuContext"), action: "context" })
     tools.push({ label: service.tr("menuHome"), action: "home" })
     tools.push({ label: service.tr("menuReload"), action: "reload" })
     tools.push({ label: service.tr("menuHide"), action: "hide" })

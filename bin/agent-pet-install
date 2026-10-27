@@ -1,0 +1,63 @@
+#!/usr/bin/env bash
+# 把宿主侧的 pi 扩展（ext/agent-pet-pi.ts）装进 pi 的扩展目录。
+#
+# 用符号链接而不是复制：插件本身更新后，扩展自动跟着变，不用重装。
+#
+# 用法：
+#   bin/agent-pet-install              # 安装（默认 ~/.pi/agent/extensions/）
+#   bin/agent-pet-install --uninstall  # 卸载（只删我们自己那条链接）
+#
+# 尊重 PI_CODING_AGENT_DIR（pi 自己的配置目录覆盖）。
+
+set -uo pipefail
+
+self_dir=$(cd "$(dirname "$0")" && pwd)
+plugin=$(cd "$self_dir/.." && pwd)
+src="$plugin/ext/agent-pet-pi.ts"
+agent_dir=${PI_CODING_AGENT_DIR:-$HOME/.pi/agent}
+ext_dir="$agent_dir/extensions"
+target="$ext_dir/agent-pet-pi.ts"
+
+[[ -f $src ]] || { echo "找不到 $src" >&2; exit 1; }
+
+if [[ ${1:-} == --uninstall ]]; then
+  if [[ -L $target ]]; then
+    rm -f -- "$target" && echo "已移除 $target"
+  elif [[ -e $target ]]; then
+    echo "$target 不是符号链接，没有动它（如果是你手动复制的，请自行删除）" >&2
+    exit 1
+  else
+    echo "没有安装（$target 不存在）"
+  fi
+  exit 0
+fi
+
+mkdir -p "$ext_dir" || { echo "无法创建 $ext_dir" >&2; exit 1; }
+
+if [[ -L $target ]]; then
+  current=$(readlink -f -- "$target")
+  if [[ $current == "$(readlink -f -- "$src")" ]]; then
+    echo "已经装好了：$target -> $src"
+    exit 0
+  fi
+  echo "替换指向 $current 的旧链接"
+  rm -f -- "$target"
+elif [[ -e $target ]]; then
+  backup="$target.bak-pi-pet-$(date +%Y%m%d%H%M%S)"
+  mv -- "$target" "$backup"
+  echo "已有同名文件，已备份为 $backup"
+fi
+
+ln -s -- "$src" "$target" || { echo "创建符号链接失败" >&2; exit 1; }
+
+cat <<EOF
+已安装：$target
+        -> $src
+
+下一步：
+  1) 重启正在运行的 pi（扩展在启动时加载，当前会话不会热加载）。
+  2) 想让宠物能说话，在 ~/.config/agent-pet/config.jsonc 里设置：
+       { "murmur": { "enabled": true, "model": "<provider/model>" } }
+     模型留空时整个 LLM 功能是关闭的（不会偷偷用默认模型）。
+  3) 装完如果宠物没反应，先看 pi 的扩展诊断：pi --help 里的扩展相关命令，或 /reload。
+EOF

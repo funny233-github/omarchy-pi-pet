@@ -1,7 +1,7 @@
 import QtQuick
 import Quickshell
 import "lib/shared.mjs" as Shared
-import "lib/work-status.mjs" as WS
+import "lib/pi-state.mjs" as PS
 
 // 一只宠物。坐标语义与 dsh-pet 一致：(x, y) = 16:9 动画盒的左上角，盒宽 size；
 // 画面下移 bottomPad 让脚底贴住盒底，所以盒底 = 地面。
@@ -51,7 +51,7 @@ Item {
 
   function wsActive() {
     var ws = service.workStatus
-    return cfg.workStatusEnabled !== false && ws && !WS.isTerminal(ws.state) ? ws : null
+    return ws && !PS.isTerminal(ws.state) ? ws : null
   }
 
   // 播放 name；nextOnce = 播完一遍触发 handleEnded，否则无限循环
@@ -127,7 +127,7 @@ Item {
 
   function pickNext() {
     var roll = Math.random()
-    var k = Shared.rollKind(roll, weights, { fixed: cfg.fixedEnabled === true })
+    var k = Shared.rollKind(roll, weights, { fixed: false })
     if (k === "idle") {
       play(Shared.pick(anims.idle, anim), true)
     } else if (k === "turn") {
@@ -145,7 +145,7 @@ Item {
     var ws = wsActive()
     if (!ws) return false
     var pool = (anims.events || {}).workStatus || []
-    var slot = pool[WS.stateIndex(ws.state)]
+    var slot = pool[PS.stateIndex(ws.state)]
     if (slot === undefined) return false
     play(Shared.pickSlot(slot, anim), Array.isArray(slot) && slot.length > 1)
     return true
@@ -465,9 +465,9 @@ Item {
         return
       }
       // 点击：clickAction = "usage" 查看用量（Q 弹 + 用量动画与气泡）；默认 "react" 播点击回应动画 + Q 弹
-      if (pet.service.config.clickAction === "usage") {
+      if (pet.service.config.click === "context") {
         pet.startSquash(Shared.SQ_SQUASH)
-        pet.service.showUsage(true)
+        pet.service.showContext()
         return
       }
       if (pet.anims.clicks.length) {
@@ -479,18 +479,13 @@ Item {
 
   // ------------------------------------------------------------ 菜单动作（PetMenu 调用）
   function menuAction(leaf) {
-    if (leaf.action === "whisper") {
-      var r = service.requestWhisper(cfg.id)
-      if (r === "busy") showBubble(service.tr("whisperBusy"), "", 4000)
-      else if (r === "ok") showBubble(service.tr("whisperThinking"), "", 0)
+    if (leaf.action === "murmur") {
+      // 结果通过 service.speech 上屏（流式），这里只负责失败提示
+      service.requestMurmur(true)
       return
     }
-    if (leaf.action === "chat") {
-      overlay.openChat(pet)
-      return
-    }
-    if (leaf.action === "usage") {
-      service.showUsage(true)
+    if (leaf.action === "context") {
+      service.showContext()
       return
     }
     if (leaf.action === "home") {
@@ -525,9 +520,9 @@ Item {
     stopThrow()
     stopMove()
     var p = Shared.anchorPixel({
-      corner: (cfg.position || {}).corner || "bottom-right",
-      marginX: Number((cfg.position || {}).marginX) || 0,
-      marginY: Number((cfg.position || {}).marginY) || 0,
+      corner: cfg.corner || "bottom-right",
+      marginX: Number(cfg.marginX) || 0,
+      marginY: Number(cfg.marginY) || 0,
       size: size,
       W: areaW,
       H: areaH
@@ -560,17 +555,23 @@ Item {
     onTriggered: pet.wsBubble = null
   }
 
-  readonly property var bubbleContent: tempBubble || wsBubble
+  // 优先级：她正在说的话（流式 / 刚说完 / 出错）> 临时气泡 > 工作状态气泡
+  readonly property var bubbleContent: {
+    var s = service.speech
+    if (s && (s.streaming || s.text || s.thinking || s.notice || s.error)) return s
+    return tempBubble || wsBubble
+  }
 
   Bubble {
     id: bubble
     content: pet.bubbleContent
     memeDir: Qt.resolvedUrl("assets/memes/")
-    readonly property var fontCfg: pet.service.config.bubbleFont || ({})
+    readonly property var bubbleCfg: pet.service.config.bubble || ({})
+    maxTextWidth: Number(bubbleCfg.width) > 0 ? Number(bubbleCfg.width) : 240
     // 没指定字体时：中文用 Noto Sans CJK SC，英文用 Noto Sans；没装则由 fontconfig 回退到其他字体
-    fontFamily: fontCfg.family || (fontCfg.file ? "" : pet.service.lang === "en" ? "Noto Sans" : "Noto Sans CJK SC")
-    fontFile: fontCfg.file ? String(fontCfg.file).replace(/^~(?=\/)/, pet.service.home) : ""
-    fontSize: Number(fontCfg.size) > 0 ? Number(fontCfg.size) : 14
+    fontFamily: bubbleCfg.font ? "" : (pet.service.lang === "en" ? "Noto Sans" : "Noto Sans CJK SC")
+    fontFile: bubbleCfg.font ? String(bubbleCfg.font).replace(/^~(?=\/)/, pet.service.home) : ""
+    fontSize: Number(bubbleCfg.fontSize) > 0 ? Number(bubbleCfg.fontSize) : 14
     // 头顶居中，夹在屏幕内
     readonly property real headY: pet.bottomPad + Shared.HIT_BOX.y0 / 360 * pet.boxH
     x: Math.max(-pet.x + 4, Math.min(pet.size / 2 - width / 2, pet.areaW - pet.x - width - 4))
@@ -586,7 +587,7 @@ Item {
       pet.applyWorkStatus()
     }
 
-    // 改配置（如 workStatusDetail）后立即按新设置重算气泡；档位没变，不会重播动画
+    // 改配置（如 bubble.detail）后立即按新设置重算气泡；档位没变，不会重播动画
     function onConfigChanged() {
       pet.applyWorkStatus()
     }
@@ -607,13 +608,6 @@ Item {
       pet.playByName(name)
     }
 
-    function onUsageShow(summary) {
-      if (pet.cfg.balanceEnabled === false) return
-      var pool = (pet.anims.events || {}).balance || []
-      var slot = pool[summary.tier]
-      if (slot !== undefined && !pet.dragging && !pet.wsActive()) pet.play(Shared.pickSlot(slot, pet.anim), true)
-      pet.showBubble(summary.text, "", 10000)
-    }
   }
 
   // 当前展示的会话 + 档位；只有它变化才切动画，工具 / 命令 / 总结变化只刷新气泡
@@ -622,7 +616,6 @@ Item {
   property string wsLang: ""
 
   function applyWorkStatus() {
-    if (cfg.workStatusEnabled === false) return
     var ws = service.workStatus
     if (!ws) {
       // 没有活跃会话：正在循环的状态动画播完这一遍就回随机链
@@ -631,8 +624,8 @@ Item {
       wsSig = ""
       return
     }
-    var idx = WS.stateIndex(ws.state)
-    var terminal = WS.isTerminal(ws.state)
+    var idx = PS.stateIndex(ws.state)
+    var terminal = PS.isTerminal(ws.state)
     var sig = ws.key + "|" + ws.state
     var changed = sig !== wsSig
     wsSig = sig
@@ -642,17 +635,14 @@ Item {
       wsLine = texts[idx] && texts[idx].length ? texts[idx][Math.floor(Math.random() * texts[idx].length)] : ""
     }
 
-    // 气泡：agent · 项目 / 步骤总结（开启且已有）或档位文案 / 工具 · 命令摘要（workStatusDetail 开启时）
-    var showDetail = service.config.workStatusDetail === true
-    var mode = service.summaryMode()
-    var project = WS.projectName(ws.cwd)
-    var lines = [(ws.agent === "codex" ? "Codex" : "Claude") + (project ? " · " + project : "")]
-    // model 模式的总结只描述进行中的步骤；transcript 模式结束时显示 agent 的最后一句回复
-    var showSummary = ws.summary && (mode === "transcript" || (mode === "model" && !terminal))
-    var main = showSummary ? ws.summary : wsLine
+    // 气泡：pi · 项目 / 档位文案 / 工具 · 命令摘要（bubble.detail 开启时）
+    var showDetail = (service.config.bubble || {}).detail === true
+    var project = PS.projectName(ws.cwd)
+    var lines = ["pi" + (project ? " · " + project : "")]
+    var main = wsLine
     if (!showDetail && ws.state === "waiting" && ws.tool) main += service.tr("toolSuffix", { tool: ws.tool })
     if (main) lines.push(main)
-    if (showDetail && ws.tool && !terminal) lines.push(WS.formatDetail(ws.tool, ws.detail, ws.cwd))
+    if (showDetail && ws.tool && !terminal) lines.push(PS.formatDetail(ws.tool, ws.detail, ws.cwd))
     wsBubble = lines.length > 1 ? { text: lines.join("\n"), meme: "" } : null
     if (!changed) return
 
