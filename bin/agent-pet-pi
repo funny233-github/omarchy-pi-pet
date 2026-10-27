@@ -107,9 +107,8 @@ if [[ $compact == 1 ]]; then
     fi
   done
 
-  exec {RPC[1]}>&-
-  wait "$RPC_PID" 2>/dev/null || true
-
+  # 不显式关 fd / wait：拿到了响应就可以走。退出时 bash 关掉管道，
+  # 子进程 stdin 收到 EOF 自己收尾（coproc 的 fd 变量在进程退出后可能已被清掉）。
   if [[ -n $result ]]; then
     # 输出原始 response JSON，交给 Service 解析（脚本不依赖 jq）
     printf '%s\n' "$result"
