@@ -28,6 +28,8 @@ Scope {
   property string configError: ""
   property bool hidden: false
   property string lang: "zh"
+  // 动画帧率：assets/webp/manifest.json 里写的 15fps，读不到就用它
+  property int assetFps: 15
 
   function tr(key, params) {
     return I18n.t(lang, key, params)
@@ -94,6 +96,18 @@ Scope {
     config = merged
     ready = true
     if (configError) speak("", tr("configError", { error: configError }))
+  }
+
+  FileView {
+    id: assetManifest
+    path: root.pluginDir + "/assets/webp/manifest.json"
+    blockLoading: true
+    printErrors: false
+    onLoaded: {
+      try {
+        root.assetFps = Number(JSON.parse(text()).fps) || 15
+      } catch (e) {}
+    }
   }
 
   function reloadConfig() {
@@ -260,7 +274,7 @@ Scope {
     if (ok) {
       setSpeech({
         kind: "speech",
-        text: pi.speechText,
+        text: pi.displayText,
         thinking: "",
         notice: "",
         streaming: false,
@@ -275,7 +289,7 @@ Scope {
       }
       setSpeech({
         kind: "speech",
-        text: pi.speechText,
+        text: pi.displayText,
         thinking: "",
         notice: "",
         streaming: false,
