@@ -430,6 +430,8 @@ Scope {
       if (manual) sayInfo(tr("busy"))
       return "busy"
     }
+    // 隐藏时只有手动点（IPC/菜单）才会开口
+    if (!manual && root.hidden) return "hidden"
     // 你正在干活时不打扰（只有手动点才允许插一句）
     if (!manual && PS.anyBusy(wsStore)) return "agent-busy"
     var meme = ""
@@ -472,7 +474,8 @@ Scope {
   Timer {
     id: murmurTimer
     interval: Math.max(60, Number(root.murmur.intervalSec) || 600) * 1000
-    running: root.ready && root.murmurReady()
+    // 隐藏时不自动开口：每次开口都是一次子 pi spawn（本地模型也要算力），看不见就别烧
+    running: root.ready && root.murmurReady() && !root.hidden
     repeat: true
     onTriggered: root.requestMurmur(false)
   }
