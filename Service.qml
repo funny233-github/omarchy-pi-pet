@@ -363,11 +363,11 @@ Scope {
     speak("", tr("ctxUsage", { pct: pct }))
     var pool = (config.animations || {}).events || {}
     var slot = (pool.context || [])[PS.ctxTier(ws.ctxPercent)]
-    if (slot !== undefined) playRequest("", SharedPickSlot(slot))
+    if (slot !== undefined) playRequest("", pickPoolSlot(slot))
   }
 
   // 播放档位池里的一段（字符串或数组），与 Pet 内部同一套规则
-  function SharedPickSlot(slot) {
+  function pickPoolSlot(slot) {
     if (typeof slot === "string") return slot
     if (Array.isArray(slot) && slot.length) return slot[Math.floor(Math.random() * slot.length)]
     return ""
