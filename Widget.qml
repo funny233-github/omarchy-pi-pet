@@ -42,6 +42,25 @@ BarWidget {
 
   readonly property real iconOpacity: root.mood === "hidden" || root.mood === "unknown" ? 0.45 : 1.0
 
+  readonly property bool petHidden: !!(root.info && root.info.hidden === true)
+  // Rebuilt only when the language or the hidden flag changes, not on every
+  // poll: otherwise the menu would rebuild itself under the pointer.
+  readonly property var menuItems: Model.menuItems(root.lang, root.petHidden)
+
+  property bool menuOpen: false
+
+  // PopupCard calls this when the click lands outside it.
+  function close() {
+    menuOpen = false
+  }
+
+  function runMenu(method) {
+    menuOpen = false
+    if (actionProc.running) return
+    actionProc.command = ["omarchy-shell", "agent-pet", method]
+    actionProc.running = true
+  }
+
   implicitWidth: button.implicitWidth
   implicitHeight: button.implicitHeight
 
@@ -65,12 +84,69 @@ BarWidget {
       }
     }
 
-    // Showing and hiding the pet is the one thing a bar icon should do to it:
-    // everything else is in the pet's own menu.
+    // Left toggles the pet, right opens the action list. The pet's own menu
+    // still has the animation tree; this one is the four things worth doing
+    // without reaching for the pet.
     onPressed: function(buttonCode) {
-      if (actionProc.running) return
-      actionProc.command = ["omarchy-shell", "agent-pet", "toggle"]
-      actionProc.running = true
+      if (buttonCode === Qt.RightButton) {
+        root.menuOpen = !root.menuOpen
+        return
+      }
+      root.runMenu("toggle")
+    }
+  }
+
+  PopupCard {
+    id: menu
+
+    anchorItem: button
+    bar: root.bar
+    owner: root
+    open: root.menuOpen
+    contentWidth: menu.fittedContentWidth(Style.space(190))
+    contentHeight: menu.fittedContentHeight(rows.implicitHeight)
+
+    Column {
+      id: rows
+      anchors.fill: parent
+      spacing: Style.space(2)
+
+      Repeater {
+        model: root.menuItems
+
+        Rectangle {
+          required property var modelData
+          readonly property bool hovered: hover.hovered
+
+          width: rows.width
+          height: Style.space(26)
+          radius: Style.cornerRadius
+          color: hovered ? Color.menu.selectedBackground : "transparent"
+
+          Text {
+            anchors.fill: parent
+            anchors.leftMargin: Style.space(8)
+            anchors.rightMargin: Style.space(8)
+            verticalAlignment: Text.AlignVCenter
+            elide: Text.ElideRight
+            text: modelData.label
+            color: Color.menu.text
+            font.family: Style.font.family
+            font.pixelSize: Style.font.caption
+          }
+
+          HoverHandler {
+            id: hover
+            cursorShape: Qt.PointingHandCursor
+          }
+
+          MouseArea {
+            anchors.fill: parent
+            acceptedButtons: Qt.LeftButton
+            onClicked: root.runMenu(modelData.method)
+          }
+        }
+      }
     }
   }
 

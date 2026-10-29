@@ -31,9 +31,13 @@ Omarchy 桌面宠物，只盯着 **pi**，并且用它自己的声音跟你说�
 | 出错 | 睁眼、直线嘴 | 警示色 |
 | 隐藏 / 没连上 | 闭眼 | 45% 淡出 |
 
-悬停显示精确档位和项目名：`Pi Pet · 在干活 · omarchy-pi-pet (bash)`。**点一下 = 显示/隐藏宠物**
-（等价于 `omarchy-shell agent-pet toggle`）。它每 3 秒读一次 `omarchy-shell agent-pet state`，
-不碰 `Service.qml` 的内部状态。
+悬停显示精确档位和项目名：`Pi Pet · 在干活 · omarchy-pi-pet (bash)`。
+
+- **左键**：显示 / 隐藏宠物（等价于 `omarchy-shell agent-pet toggle`）
+- **右键**：动作列表 —— 碎碎念、看看上下文、整理记忆、重载配置、藏起来/放出来
+
+每一项都是 `omarchy-shell agent-pet <method>`，没有第二套实现。它每 3 秒读一次
+`omarchy-shell agent-pet state`，不碰 `Service.qml` 的内部状态。
 
 加进栏里（`omarchy plugin add ... --enable` 装的时候也会问一次放哪）：
 

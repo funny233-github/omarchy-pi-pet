@@ -34,9 +34,14 @@ only answers "does this want you".
 | error | open eyes, flat mouth | urgent |
 | hidden / not connected | closed eyes | 45% opacity |
 
-The tooltip gives the exact phase and the project: `Pi Pet · working · omarchy-pi-pet (bash)`. **Click toggles the
-pet** (the same thing `omarchy-shell agent-pet toggle` does). It reads `omarchy-shell agent-pet state` every three
-seconds and never reaches into `Service.qml`.
+The tooltip gives the exact phase and the project: `Pi Pet · working · omarchy-pi-pet (bash)`.
+
+- **Left click** shows or hides the pet (the same thing `omarchy-shell agent-pet toggle` does).
+- **Right click** opens a short action list: murmur something, show context usage, tidy her memory, reload config,
+  hide/show her.
+
+Every row runs `omarchy-shell agent-pet <method>`; there is no second implementation. The widget reads
+`omarchy-shell agent-pet state` every three seconds and never reaches into `Service.qml`.
 
 Add it to the bar (`omarchy plugin add ... --enable` also asks where to put it):
 
