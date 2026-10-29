@@ -156,6 +156,26 @@ Scope {
   // 整理记忆时的"睡觉"状态：true 睡下（循环动画），false 醒来
   signal sleepRequest(bool sleeping)
 
+  // ------------------------------------------------------------ overlay 登记
+  // 每块屏一个 overlay。顶栏右键要把菜单开在"这块屏上的那只宠物"里，所以得能从
+  // IPC 找到对应实例——顺序无关，按屏名匹配。
+  property var overlays: []
+
+  function registerOverlay(overlay) {
+    overlays = overlays.filter(function (other) { return other !== overlay }).concat([overlay])
+  }
+
+  function unregisterOverlay(overlay) {
+    overlays = overlays.filter(function (other) { return other !== overlay })
+  }
+
+  function overlayFor(screenName) {
+    for (var i = 0; i < overlays.length; i++) {
+      if (overlays[i].screenName === screenName) return overlays[i]
+    }
+    return overlays.length > 0 ? overlays[0] : null
+  }
+
   // ------------------------------------------------------------ 工作状态
   property var wsStore: PS.createStore()
   property var workStatus: null
@@ -539,6 +559,17 @@ Scope {
       root.hidden = !root.hidden
       if (root.hidden) pi.cancel()
       return root.hidden ? "hidden" : "shown"
+    }
+    // 顶栏图标右键：把宠物自己的菜单开在图标下面。用的是同一个 PetMenu、同一份动作
+    // 表，所以两边永远不会长出两套列表。
+    function menu(screen: string, x: string, y: string): string {
+      var overlay = root.overlayFor(String(screen || ""))
+      if (!overlay) return "no-pet"
+      var px = Number(x)
+      var py = Number(y)
+      if (!Number.isFinite(px) || !Number.isFinite(py)) return "bad-point"
+      overlay.openMenu(overlay.petObject, px, py)
+      return "ok"
     }
     function forget(): string {
       pi.cancel()

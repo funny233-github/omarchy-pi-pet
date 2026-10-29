@@ -42,23 +42,26 @@ BarWidget {
 
   readonly property real iconOpacity: root.mood === "hidden" || root.mood === "unknown" ? 0.45 : 1.0
 
-  readonly property bool petHidden: !!(root.info && root.info.hidden === true)
-  // Rebuilt only when the language or the hidden flag changes, not on every
-  // poll: otherwise the menu would rebuild itself under the pointer.
-  readonly property var menuItems: Model.menuItems(root.lang, root.petHidden)
-
-  property bool menuOpen: false
-
-  // PopupCard calls this when the click lands outside it.
-  function close() {
-    menuOpen = false
+  // argv, not a command line: `menu <screen> <x> <y>` is four arguments, and a
+  // single string with spaces in it would be one.
+  function run(method, args) {
+    if (actionProc.running) return
+    actionProc.command = ["omarchy-shell", "agent-pet", method].concat(args || [])
+    actionProc.running = true
   }
 
-  function runMenu(method) {
-    menuOpen = false
-    if (actionProc.running) return
-    actionProc.command = ["omarchy-shell", "agent-pet", method]
-    actionProc.running = true
+  // The pet owns the menu — its animation tree, its chat box, its "tidy memory"
+  // — so the bar does not draw a second one: it tells the pet where the icon is
+  // and the pet opens the very same PetMenu there. Coordinates are window-local
+  // on both sides (bar window and overlay both span their screen), so the point
+  // only has to name the screen, not convert anything.
+  function openPetMenu() {
+    var win = button.QsWindow.window
+    var screenName = win && win.screen ? win.screen.name : ""
+    var corner = button.mapToItem(null, 0, 0)
+    var x = Math.round(corner.x + button.width / 2)
+    var y = Math.round(corner.y + button.height + Style.space(2))
+    run("menu", [screenName, String(x), String(y)])
   }
 
   implicitWidth: button.implicitWidth
@@ -89,64 +92,10 @@ BarWidget {
     // without reaching for the pet.
     onPressed: function(buttonCode) {
       if (buttonCode === Qt.RightButton) {
-        root.menuOpen = !root.menuOpen
+        root.openPetMenu()
         return
       }
-      root.runMenu("toggle")
-    }
-  }
-
-  PopupCard {
-    id: menu
-
-    anchorItem: button
-    bar: root.bar
-    owner: root
-    open: root.menuOpen
-    contentWidth: menu.fittedContentWidth(Style.space(190))
-    contentHeight: menu.fittedContentHeight(rows.implicitHeight)
-
-    Column {
-      id: rows
-      anchors.fill: parent
-      spacing: Style.space(2)
-
-      Repeater {
-        model: root.menuItems
-
-        Rectangle {
-          required property var modelData
-          readonly property bool hovered: hover.hovered
-
-          width: rows.width
-          height: Style.space(26)
-          radius: Style.cornerRadius
-          color: hovered ? Color.menu.selectedBackground : "transparent"
-
-          Text {
-            anchors.fill: parent
-            anchors.leftMargin: Style.space(8)
-            anchors.rightMargin: Style.space(8)
-            verticalAlignment: Text.AlignVCenter
-            elide: Text.ElideRight
-            text: modelData.label
-            color: Color.menu.text
-            font.family: Style.font.family
-            font.pixelSize: Style.font.caption
-          }
-
-          HoverHandler {
-            id: hover
-            cursorShape: Qt.PointingHandCursor
-          }
-
-          MouseArea {
-            anchors.fill: parent
-            acceptedButtons: Qt.LeftButton
-            onClicked: root.runMenu(modelData.method)
-          }
-        }
-      }
+      root.run("toggle")
     }
   }
 

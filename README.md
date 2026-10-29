@@ -37,10 +37,12 @@ only answers "does this want you".
 The tooltip gives the exact phase and the project: `Pi Pet · working · omarchy-pi-pet (bash)`.
 
 - **Left click** shows or hides the pet (the same thing `omarchy-shell agent-pet toggle` does).
-- **Right click** opens a short action list: murmur something, show context usage, tidy her memory, reload config,
-  hide/show her.
+- **Right click** opens her own menu right under the icon: actions → animation categories → all 106 animations,
+  plus murmur, chat, context, tidy memory, go home, reload, hide.
 
-Every row runs `omarchy-shell agent-pet <method>`; there is no second implementation. The widget reads
+It is not a copy of the list: the bar tells the pet where the icon is (`agent-pet menu <screen> <x> <y>`) and the
+pet opens its own `PetMenu` there, so both entry points stay one menu with one set of actions. It works while the
+pet is hidden, too — the overlay window comes up for the menu alone, without the pet. The widget reads
 `omarchy-shell agent-pet state` every three seconds and never reaches into `Service.qml`.
 
 Add it to the bar (`omarchy plugin add ... --enable` also asks where to put it):

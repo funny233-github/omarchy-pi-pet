@@ -84,37 +84,6 @@ function tooltip(info, mood, lang) {
   return text
 }
 
-// The right-click menu. Same labels in both languages, and the last row says
-// what it will do rather than what state it is in.
-var MENU = {
-  zh: [
-    ["murmur", "碎碎念"],
-    ["context", "看看上下文"],
-    ["compact", "整理记忆"],
-    ["reload", "重载配置"],
-  ],
-  en: [
-    ["murmur", "Murmur something"],
-    ["context", "Show context usage"],
-    ["compact", "Tidy her memory"],
-    ["reload", "Reload config"],
-  ],
-}
-
-// A fresh array each call: the caller owns it, and the toggle row depends on
-// whether the pet is currently hidden.
-function menuItems(lang, hidden) {
-  var table = MENU[lang === "en" ? "en" : "zh"]
-  var items = table.map(function (row) { return { label: row[1], method: row[0] } })
-  items.push({
-    label: hidden
-      ? (lang === "en" ? "Show her" : "把宠物放出来")
-      : (lang === "en" ? "Hide her" : "把宠物藏起来"),
-    method: "toggle",
-  })
-  return items
-}
-
 // The bar hands widgets a palette; a theme may not define every key, so every
 // read needs a fallback rather than a binding to undefined.
 function barValue(bar, name, fallback) {
@@ -127,7 +96,6 @@ if (typeof module !== "undefined") {
     moodOf: moodOf,
     label: label,
     tooltip: tooltip,
-    menuItems: menuItems,
     barValue: barValue
   }
 }
