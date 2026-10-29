@@ -16,6 +16,33 @@ Omarchy 桌面宠物，只盯着 **pi**，并且用它自己的声音跟你说�
 - **对话**：右键 →「对话」可以和她说话。回复流进同一个气泡，并且和碎碎念共用一条会话，所以她会记得聊过什么
   （`agent-pet forget` 清空）。
 - **提醒**：pi 需要你确认、跑完、出错时发桌面通知。只在终端不在前台时发，且只带 agent 名和状态。
+- **顶栏图标**：一张会变脸的小头像，不打开任何东西就知道 pi 在干什么。
+
+## 顶栏图标
+
+宠物在顶栏有个 13 像素的头像：眼睛和嘴的形状说状态，颜色只说"要不要你管"。
+
+| 状态 | 脸 | 颜色 |
+|---|---|---|
+| 空闲 / 没有会话 | 闭眼、直线嘴 | 常规文字色 |
+| 思考、干活、看结果 | 睁眼、直线嘴 | 强调色 |
+| 等你确认 | 瞪眼、张嘴 | 警示色 |
+| 这一轮完成 | 闭眼、微笑 | 强调色 |
+| 出错 | 睁眼、直线嘴 | 警示色 |
+| 隐藏 / 没连上 | 闭眼 | 45% 淡出 |
+
+悬停显示精确档位和项目名：`Pi Pet · 在干活 · omarchy-pi-pet (bash)`。**点一下 = 显示/隐藏宠物**
+（等价于 `omarchy-shell agent-pet toggle`）。它每 3 秒读一次 `omarchy-shell agent-pet state`，
+不碰 `Service.qml` 的内部状态。
+
+加进栏里（`omarchy plugin add ... --enable` 装的时候也会问一次放哪）：
+
+```bash
+omarchy bar put local.pi-pet --section right
+```
+
+不想在栏里看到它：`omarchy bar put` 之外没有单独的移除命令，先 `omarchy bar defaults` 恢复默认布局，
+或者直接 `omarchy plugin disable local.pi-pet`（宠物本身也一起停）。
 
 ## 依赖
 
@@ -144,6 +171,9 @@ omarchy-shell agent-pet forget    # 清空她的持久会话
 | 路径 | 说明 |
 |---|---|
 | `Service.qml` | 配置、会话状态、说话、通知、IPC |
+| `Widget.qml` | 顶栏图标：每 3 秒读一次 IPC，按档位画脸 |
+| `PetGlyph.qml` | 那张脸本身（10×10 网格上的矩形，无素材、无动画） |
+| `Model.js` | 档位 → 表情/文案的映射；纯函数，`node` 里可直接测 |
 | `ChatInput.qml` | 「对话」菜单项背后的输入框 |
 | `Pi.qml` | 启动子 pi、解析事件流、驱动相位机 |
 | `EventServer.qml` | 两个生产者共用的 unix socket |

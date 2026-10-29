@@ -6,8 +6,19 @@
   "author": "lia",
   "license": "MIT",
   "description": "Desktop pet ported from dsh-pet, with a strictly sandboxed pi integration: live work status, and murmurs spoken by your own pi with an isolated, tool-limited configuration.",
-  "kinds": ["service"],
+  "kinds": [
+    "service",
+    "bar-widget"
+  ],
   "entryPoints": {
-    "service": "Service.qml"
+    "service": "Service.qml",
+    "barWidget": "Widget.qml"
+  },
+  "barWidget": {
+    "displayName": "Pi Pet",
+    "description": "The pet's face in the bar: quiet, working, wants you, done, or broke — plus the project it is in. Click to show or hide the pet.",
+    "category": "AI",
+    "allowMultiple": false,
+    "defaultSection": "right"
   }
 }

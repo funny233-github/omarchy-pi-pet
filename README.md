@@ -20,6 +20,33 @@ source, one model.
 - **Attention alerts** — a desktop notification when pi needs you, finishes, or fails. Sent only while the terminal is
   unfocused, and carrying nothing but the agent name and state.
 
+## Bar icon
+
+Thirteen pixels of the pet, in the bar: the shape of the eyes and the mouth says what is happening, and colour
+only answers "does this want you".
+
+| State | Face | Colour |
+|---|---|---|
+| idle / no session | closed eyes, flat mouth | normal text colour |
+| thinking, working, reading a result | open eyes, flat mouth | accent |
+| needs your confirmation | wide eyes, open mouth | urgent |
+| done for this turn | closed eyes, smile | accent |
+| error | open eyes, flat mouth | urgent |
+| hidden / not connected | closed eyes | 45% opacity |
+
+The tooltip gives the exact phase and the project: `Pi Pet · working · omarchy-pi-pet (bash)`. **Click toggles the
+pet** (the same thing `omarchy-shell agent-pet toggle` does). It reads `omarchy-shell agent-pet state` every three
+seconds and never reaches into `Service.qml`.
+
+Add it to the bar (`omarchy plugin add ... --enable` also asks where to put it):
+
+```bash
+omarchy bar put local.pi-pet --section right
+```
+
+There is no separate "remove from bar" command: `omarchy bar defaults` resets the layout, and
+`omarchy plugin disable local.pi-pet` turns the widget and the pet off together.
+
 ## Requirements
 
 - Omarchy 4
@@ -153,6 +180,9 @@ omarchy-shell agent-pet forget    # clear her persistent session
 | Path | Description |
 |---|---|
 | `Service.qml` | Config, session state, speech, notifications, IPC |
+| `Widget.qml` | The bar icon: reads the IPC every three seconds and picks a face |
+| `PetGlyph.qml` | The face itself — rectangles on a 10×10 grid, no assets, no animation |
+| `Model.js` | Phase → mood/label mapping; pure functions, testable under `node` |
 | `ChatInput.qml` | The input box behind the Chat menu item |
 | `Pi.qml` | Spawns the child pi, parses the event stream, drives the phase machine |
 | `EventServer.qml` | Unix socket shared by both producers |
